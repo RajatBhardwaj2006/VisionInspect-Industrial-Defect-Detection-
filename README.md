@@ -8,35 +8,33 @@ The system learns the visual appearance of defect-free products and identifies u
 
 The project is based on the **MVTec AD Industrial Anomaly Detection Dataset** and is developed as a project-based assignment for Unsupervised Learning.
 
----
-
 ## Application Preview
 
 VisionInspect is designed as a modern industrial inspection dashboard with single-image inspection, batch inspection, anomaly visualization, and performance reporting.
 
-The inspection screen provides:
-
-* Original image
-* Anomaly heatmap
-* Defect highlighted on the original image
-* Anomaly score
-* Confidence
-* Detection threshold
-* Defect status
-* Defect location
-* Short defect explanation
-
-### Complete Application Overview
-
-The application is designed to provide separate interfaces for inspection, batch inspection, and performance analysis.
 ### Inspection Result
 
-![VisionInspect Inspection Result](Docs/images/inspection-result.png)
+![VisionInspect Inspection Result](Docs/Images/visionInspector_reference_output_image.png)
+
+The inspection screen provides:
+
+- Original image
+- Anomaly heatmap
+- Defect highlighted on the original image
+- Anomaly score
+- Confidence
+- Detection threshold
+- Defect status
+- Defect location
+- Short defect explanation
 
 ### Complete Application Overview
 
-![VisionInspect Application Overview](Docs/images/application-overview.png)
+The application provides separate interfaces for single-image inspection, batch inspection, and performance analysis.
+
+![VisionInspect Application Overview](Docs/Images/visionInspector_reference_output_image_website.png)
 ---
+
 
 ## Project Overview
 
