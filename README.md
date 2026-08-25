@@ -29,7 +29,13 @@ The inspection screen provides:
 ### Complete Application Overview
 
 The application is designed to provide separate interfaces for inspection, batch inspection, and performance analysis.
+### Inspection Result
 
+![VisionInspect Inspection Result](Docs/images/inspection-result.png)
+
+### Complete Application Overview
+
+![VisionInspect Application Overview](Docs/images/application-overview.png)
 ---
 
 ## Project Overview
