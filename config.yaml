@@ -1,0 +1,38 @@
+model:
+  image_size: 256
+
+detection:
+  image_score_method: max_raw
+  image_threshold: 0.50
+  pixel_threshold: 0.20
+
+localization:
+  gaussian_sigma: 1.0
+  morphology_kernel: 3
+  min_region_area: 30
+  max_region_area: 3000
+  max_region_width: 120
+  max_region_height: 150
+  min_region_width: 9
+  min_region_height: 9
+  border_margin: 5
+  merge_distance: 0
+
+patchcore:
+  backbone: resnet18
+  coreset_sampling_ratio: 0.10
+  image_threshold: 2.30
+  pixel_threshold: 0.70
+  gaussian_sigma: 4.0
+  model_dir: models/bottle/patchcore
+
+patchcore_v22:
+  backbone: resnet18
+  layers: ['layer1', 'layer2', 'layer3']
+  coreset_sampling_ratio: 0.10
+  image_threshold: 2.20
+  pixel_threshold: 0.60
+  gaussian_sigma: 1.50
+  model_dir: models/bottle/patchcore_v22
+
+
