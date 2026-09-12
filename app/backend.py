@@ -63,6 +63,18 @@ def get_detector(category: str) -> PatchCoreDetectorV23:
         
     return DETECTOR_CACHE[category]
 
+@app.get("/")
+def root():
+    """Root entrypoint providing service status and API documentation links."""
+    return {
+        "service": "VisionInspect Industrial Defect Detection API",
+        "status": "running",
+        "docs": "/docs",
+        "health": "/health",
+        "categories": "/categories",
+        "version": "3.1.0"
+    }
+
 @app.get("/health")
 def health_check():
     """Health check endpoint exposing system status, device, and loaded models."""
@@ -71,7 +83,7 @@ def health_check():
         "supported_categories": SUPPORTED_CATEGORIES,
         "loaded_models": list(DETECTOR_CACHE.keys()),
         "device": str(DEVICE),
-        "version": "3.0.0"
+        "version": "3.1.0"
     }
 
 @app.get("/categories")
@@ -89,9 +101,11 @@ def get_categories():
             "pixel_threshold": cat_cfg.get("pixel_threshold", 1.40),
             "use_spatial_prior": cat_cfg.get("use_spatial_prior", True),
             "backbone": "resnet18",
-            "model_dir": str(model_dir)
+            "model_dir": f"models/{cat}/patchcore_v23"
         })
     return {"categories": cat_details}
+
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 
 @app.post("/predict")
 async def predict(
@@ -106,10 +120,23 @@ async def predict(
     category = category.strip().lower()
     detector = get_detector(category)
     
-    # Read & validate uploaded image
+    # Check filename extension if available
+    filename = file.filename or ""
+    suffix = Path(filename).suffix.lower()
+    if suffix and suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format '{suffix}'. Supported formats: {sorted(ALLOWED_EXTENSIONS)}"
+        )
+        
+    # Read & validate uploaded image bytes
     try:
         content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
         pil_image = Image.open(io.BytesIO(content)).convert("RGB")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
         
@@ -142,12 +169,14 @@ async def predict(
                 
     return {
         "category": category,
-        "is_defective": result["status"] == "DEFECTIVE",
+        "model": "PatchCore v2.3",
         "status": result["status"],
+        "is_defective": result["status"] == "DEFECTIVE",
         "anomaly_score": round(float(result["score"]), 4),
         "image_threshold": round(float(result["image_threshold"]), 4),
         "pixel_threshold": round(float(result["pixel_threshold"]), 4),
         "num_defects": len(defect_regions),
+        "localized_regions": defect_regions,
         "defect_regions": defect_regions,
         "visualization_base64": vis_base64,
         "inference_time_ms": round(t_elapsed, 2),
