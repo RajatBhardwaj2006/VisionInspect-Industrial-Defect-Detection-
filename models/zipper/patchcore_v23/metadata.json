@@ -1,0 +1,15 @@
+{
+    "coreset_sampling_ratio": 0.1,
+    "patch_grid_shape": [
+        64,
+        64
+    ],
+    "memory_bank_shape": [
+        98304,
+        448
+    ],
+    "version": "2.3",
+    "category": "zipper",
+    "use_spatial_prior": true,
+    "n_train_images": 240
+}

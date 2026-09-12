@@ -1,0 +1,11 @@
+{
+    "coreset_sampling_ratio": 0.1,
+    "patch_grid_shape": [
+        32,
+        32
+    ],
+    "memory_bank_shape": [
+        21401,
+        384
+    ]
+}

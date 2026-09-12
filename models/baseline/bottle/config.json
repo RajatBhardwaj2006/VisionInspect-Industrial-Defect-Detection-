@@ -1,0 +1,7 @@
+{
+  "image_auroc": 0.8325,
+  "image_threshold": 0.606901,
+  "pixel_precision": 0.9764,
+  "pixel_recall": 0.0016,
+  "pixel_iou": 0.0016
+}
