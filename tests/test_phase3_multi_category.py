@@ -110,6 +110,7 @@ def test_fastapi_predict_invalid_category():
 
 def test_fastapi_predict_invalid_file():
     client = TestClient(app)
+    # Test 1: Non-image extension
     buf = io.BytesIO(b"this is not an image file")
     response = client.post(
         "/predict",
@@ -117,7 +118,17 @@ def test_fastapi_predict_invalid_file():
         files={"file": ("test.txt", buf, "text/plain")}
     )
     assert response.status_code == 400
-    assert "Invalid image" in response.json()["detail"]
+    assert "Unsupported file format" in response.json()["detail"] or "Invalid image" in response.json()["detail"]
+    
+    # Test 2: Invalid/corrupted image bytes with .png extension
+    buf2 = io.BytesIO(b"corrupted binary data")
+    response2 = client.post(
+        "/predict",
+        data={"category": "bottle"},
+        files={"file": ("test.png", buf2, "image/png")}
+    )
+    assert response2.status_code == 400
+    assert "Invalid image" in response2.json()["detail"]
 
 def test_fastapi_predict_end_to_end():
     client = TestClient(app)
