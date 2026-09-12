@@ -38,6 +38,7 @@ task-*.log
 *.pt
 *.pth
 !models/**/.gitkeep
+!models/category_prototypes.pt
 
 # OS and Editor specific
 .DS_Store
