@@ -103,3 +103,49 @@ In Phase 3.1, the evaluation methodology was upgraded to resolve test-set thresh
 - **Unbiased Final Test:** Evaluated with locked parameters in `results/phase3/final_test/`.
 - See [`docs/phase3_evaluation_integrity.md`](phase3_evaluation_integrity.md) for full methodology and unbiased benchmarks.
 
+---
+
+## 7. Phase 3.2 Batch Inspection & Category Compatibility Prevention
+
+Phase 3.2 expands the production operational layer with batch processing capabilities and configuration guardrails:
+
+1. **Batch Upload & Independent Processing:**
+   - Supports uploading and inspecting batches of 1 to 5 images simultaneously.
+   - Rejects batches exceeding 5 images with clear feedback.
+   - Independent per-image error resilience: corrupted files report `status: ERROR` without interrupting the evaluation of remaining valid images.
+2. **Category Compatibility Checking:**
+   - ResNet18 PatchCore 448-dimensional feature representations are checked against precomputed normal category prototypes (`models/category_prototypes.pt`).
+   - Warns operators when an uploaded image is markedly closer to another category (e.g., uploading a `zipper` when `bottle` is selected) with confidence margin $\ge 0.35$.
+   - Strictly conservative: does not flag false alarms on genuine defective items of the active category.
+   - **User Autonomy Principle:** Never automatically switches categories; presents actionable advice with explicit operator controls (`[Switch to <Suggested>]` and `[Continue with <Selected>]`).
+3. **Operational Transparency & UI State Management:**
+   - Real-time model change notifications (`MODEL CHANGED: Bottle → Zipper`).
+   - Displays safe logical model paths (`models/<category>/patchcore_v23/`) with zero local filesystem disclosure.
+   - Comprehensive batch summary analytics: Total, Normal, Defective, Category Warnings, and Failed counts.
+   - Robust session state clearing upon category changes or new batch file selections.
+
+---
+
+## 8. Category-Specific Observations & Future Research: Transistor Analysis
+
+During the Phase 3 evaluation benchmarking, the `transistor` category exhibited an asymmetric performance profile:
+- **Normal-Image Specificity:** **100.0%** (zero false alarms on normal samples in unsupervised calibration, 76.7% in full test).
+- **Defect Detection Rate:** **62.5%** (25/40 defective samples detected).
+- **Pixel-Level Recall:** **10.6%** (unbiased test set recall).
+
+### Root-Cause Diagnosis:
+1. **Fine-Scale Geometry vs. Feature Receptive Field:**
+   - Defect classes in the transistor category include microscopic bent pins, damaged leads, and cut wires.
+   - PatchCore v2.3 utilizes a composite multi-scale embedding combining ResNet18 Layer 1, Layer 2, and Layer 3. The Layer 3 receptive field is expansive and tailored for macro-surface textures (like leather) or broad structural bodies (like bottles).
+   - Fine pin displacements produce subtle local spatial shifts that get diluted in 448-dimensional feature pooling.
+2. **Alignment Sensitivity:**
+   - Transistor orientation and lead placements require precise spatial keypoint registration. Spatial background subtraction partially compensates for static housing features but cannot easily isolate minute lead deformations.
+
+### Prescribed Protocol:
+- **No Retraining or Premature Architecture Replacement in Phase 3:** In accordance with project integrity principles, the transistor model and thresholds are locked and not artificially tuned or overwritten.
+- **Future Research Directions:**
+  - Layer 1-dominated feature concatenation for sub-millimeter electronic components.
+  - High-resolution localized patch grids (128x128).
+  - Keypoint-guided pin alignment preprocessing for micro-electronics.
+
+
