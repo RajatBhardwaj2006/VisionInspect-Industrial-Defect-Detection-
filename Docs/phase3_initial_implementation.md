@@ -92,3 +92,14 @@ Run tests:
 ```powershell
 python -m pytest tests/ -v
 ```
+
+---
+
+## 6. Phase 3.1 Evaluation Integrity & Workflow Update
+
+In Phase 3.1, the evaluation methodology was upgraded to resolve test-set threshold calibration leakage:
+- **Historical Benchmark Preservation:** Historical test-calibrated metrics are preserved in `results/phase3/calibration_test_set/`.
+- **Unsupervised Normal Calibration:** Decision thresholds are calibrated strictly on held-out normal samples (`train/good/`) without test set access.
+- **Unbiased Final Test:** Evaluated with locked parameters in `results/phase3/final_test/`.
+- See [`docs/phase3_evaluation_integrity.md`](phase3_evaluation_integrity.md) for full methodology and unbiased benchmarks.
+
