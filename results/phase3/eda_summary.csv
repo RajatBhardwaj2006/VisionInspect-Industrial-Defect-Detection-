@@ -1,0 +1,6 @@
+category,train_normal,test_normal,test_defective,total_test,num_defect_types,resolution,defect_area_mean_pct,defect_area_max_pct,defect_area_mean_px,defect_types
+bottle,209,20,63,83,3,900x900,7.62%,27.42%,61694,"broken_large (20), broken_small (22), contamination (21)"
+leather,245,32,92,124,5,1024x1024,0.87%,6.86%,9167,"color (19), cut (19), fold (17), glue (19), poke (18)"
+transistor,213,60,40,100,4,1024x1024,11.98%,49.32%,125651,"bent_lead (10), cut_lead (10), damaged_case (10), misplaced (10)"
+zipper,240,32,119,151,7,1024x1024,2.62%,11.83%,27515,"broken_teeth (19), combined (16), fabric_border (17), fabric_interior (16), rough (17), split_teeth (18), squeezed_teeth (16)"
+screw,320,41,119,160,5,1024x1024,0.34%,1.01%,3518,"manipulated_front (24), scratch_head (24), scratch_neck (25), thread_side (23), thread_top (23)"
