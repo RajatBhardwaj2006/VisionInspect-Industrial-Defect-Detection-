@@ -1,0 +1,19 @@
+{
+    "category": "zipper",
+    "evaluation_type": "unbiased_locked_test",
+    "image_auroc": 0.8981,
+    "pixel_precision": 0.2553,
+    "pixel_recall": 0.3619,
+    "pixel_f1": 0.2994,
+    "pixel_iou": 0.176,
+    "detection_rate": 0.3361,
+    "normal_accuracy": 1.0,
+    "locked_image_threshold": 2.72,
+    "locked_pixel_threshold": 0.57,
+    "total_test_images": 151,
+    "normal_images": 32,
+    "defective_images": 119,
+    "detected_defective": 40,
+    "normal_false_positives": 0,
+    "use_spatial_prior": true
+}

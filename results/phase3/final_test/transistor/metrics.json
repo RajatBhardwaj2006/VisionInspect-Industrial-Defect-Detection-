@@ -1,0 +1,19 @@
+{
+    "category": "transistor",
+    "evaluation_type": "unbiased_locked_test",
+    "image_auroc": 0.82,
+    "pixel_precision": 0.6386,
+    "pixel_recall": 0.1059,
+    "pixel_f1": 0.1817,
+    "pixel_iou": 0.0999,
+    "detection_rate": 0.15,
+    "normal_accuracy": 1.0,
+    "locked_image_threshold": 3.41,
+    "locked_pixel_threshold": 1.18,
+    "total_test_images": 100,
+    "normal_images": 60,
+    "defective_images": 40,
+    "detected_defective": 6,
+    "normal_false_positives": 0,
+    "use_spatial_prior": true
+}

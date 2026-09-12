@@ -1,0 +1,21 @@
+{
+    "category": "leather",
+    "image_auroc": 0.9235733695652175,
+    "pixel_precision": 0.5365802200655653,
+    "pixel_recall": 0.524934508216242,
+    "pixel_f1": 0.5306934825004215,
+    "pixel_iou": 0.36118636661568715,
+    "calibrated_image_threshold": 2.2,
+    "calibrated_pixel_threshold": 2.71,
+    "total_test_images": 124,
+    "normal_images": 32,
+    "defective_images": 92,
+    "detected_defective": 67,
+    "detection_rate": 0.7282608695652174,
+    "normal_false_positives": 0,
+    "normal_accuracy": 1.0,
+    "tp_pixels": 33063,
+    "fp_pixels": 28555,
+    "fn_pixels": 29922,
+    "use_spatial_prior": false
+}
