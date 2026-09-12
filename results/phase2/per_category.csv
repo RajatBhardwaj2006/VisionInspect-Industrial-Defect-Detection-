@@ -1,0 +1,5 @@
+defect_type,images,detected,detection_rate,precision,recall,f1,iou
+broken_large,20,17,0.8500,0.6855,0.2888,0.4064,0.2550
+broken_small,22,22,1.0000,0.5933,0.6808,0.6340,0.4642
+contamination,21,13,0.6190,0.5971,0.2182,0.3196,0.1902
+good,20,1,0.0500,0.0000,0.0000,0.0000,0.0000

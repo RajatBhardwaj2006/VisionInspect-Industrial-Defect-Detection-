@@ -1,0 +1,21 @@
+{
+    "category": "screw",
+    "image_auroc": 0.8776388604222177,
+    "pixel_precision": 0.4174550138883298,
+    "pixel_recall": 0.5884522627323024,
+    "pixel_f1": 0.4884194661297349,
+    "pixel_iou": 0.32311838845872215,
+    "calibrated_image_threshold": 2.28,
+    "calibrated_pixel_threshold": 2.0,
+    "total_test_images": 160,
+    "normal_images": 41,
+    "defective_images": 119,
+    "detected_defective": 101,
+    "detection_rate": 0.8487394957983193,
+    "normal_false_positives": 14,
+    "normal_accuracy": 0.6585365853658537,
+    "tp_pixels": 20740,
+    "fp_pixels": 28942,
+    "fn_pixels": 14505,
+    "use_spatial_prior": true
+}

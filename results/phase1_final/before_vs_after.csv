@@ -1,0 +1,6 @@
+Metric,Baseline,Final,Absolute Change,Percentage Change
+Image AUROC,0.8325,0.8325,0.0000,0.0%
+Pixel Precision,0.1832,0.1832,0.0000,0.0%
+Pixel Recall,0.2171,0.2171,0.0000,0.0%
+Pixel F1,0.1987,0.1987,0.0000,0.0%
+Pixel IoU,0.1103,0.1103,0.0000,0.0%

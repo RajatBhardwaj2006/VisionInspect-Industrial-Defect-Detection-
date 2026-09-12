@@ -1,0 +1,6 @@
+Metric,Phase1_Autoencoder,Phase2_PatchCore,Phase2_2_CrackSensitive,Absolute_Change_p22_vs_p2,Pct_Change_p22_vs_p2,Pct_Change_p22_vs_p1
+AUROC,0.8325,0.9992,0.9929,-0.0063,-0.63%,+19.26%
+Precision,0.1832,0.6231,0.6875,+0.0644,+10.34%,+275.29%
+Recall,0.2171,0.3202,0.3955,+0.0753,+23.51%,+82.17%
+F1,0.1987,0.4230,0.5021,+0.0791,+18.71%,+152.71%
+IoU,0.1103,0.2682,0.3352,+0.0670,+24.99%,+203.92%

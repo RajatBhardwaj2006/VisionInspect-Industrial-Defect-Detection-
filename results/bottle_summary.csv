@@ -1,0 +1,6 @@
+Metric,Value
+Image AUROC,0.832540
+Pixel Precision,0.183226
+Pixel Recall,0.217133
+Pixel F1,0.198744
+Pixel IoU,0.110336

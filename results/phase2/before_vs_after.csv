@@ -1,0 +1,6 @@
+Metric,Phase1_Autoencoder,Phase2_PatchCore,Absolute_Change,Percentage_Change
+Image AUROC,0.8325,0.9992,+0.1667,+20.02%
+Pixel Precision,0.1832,0.6231,+0.4399,+240.10%
+Pixel Recall,0.2171,0.3202,+0.1031,+47.47%
+Pixel F1,0.1987,0.4230,+0.2243,+112.87%
+Pixel IoU,0.1103,0.2682,+0.1579,+143.16%
