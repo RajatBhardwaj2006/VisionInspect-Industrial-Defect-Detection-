@@ -35,4 +35,72 @@ patchcore_v22:
   gaussian_sigma: 1.50
   model_dir: models/bottle/patchcore_v22
 
+patchcore_v23:
+  backbone: resnet18
+  layers: ['layer1', 'layer2', 'layer3']
+  coreset_sampling_ratio: 0.10
+  image_threshold: 1.50
+  pixel_threshold: 1.40
+  gaussian_sigma: 1.20
+  morphology_kernel: 3
+  min_region_area: 25
+  border_margin: 5
+  merge_distance: 15.0
+  model_dir: models/bottle/patchcore_v23
 
+# Phase 3 Category-Aware Configuration
+categories:
+  bottle:
+    model_dir: models/bottle/patchcore_v23
+    use_spatial_prior: true
+    image_threshold: 1.50
+    pixel_threshold: 1.40
+    gaussian_sigma: 1.20
+    morphology_kernel: 3
+    min_region_area: 25
+    border_margin: 5
+    merge_distance: 15.0
+
+  leather:
+    model_dir: models/leather/patchcore_v23
+    use_spatial_prior: false
+    image_threshold: 2.20
+    pixel_threshold: 2.71
+    gaussian_sigma: 1.20
+    morphology_kernel: 3
+    min_region_area: 25
+    border_margin: 5
+    merge_distance: 15.0
+
+  transistor:
+    model_dir: models/transistor/patchcore_v23
+    use_spatial_prior: true
+    image_threshold: 2.69
+    pixel_threshold: 0.88
+    gaussian_sigma: 1.20
+    morphology_kernel: 3
+    min_region_area: 25
+    border_margin: 5
+    merge_distance: 15.0
+
+  zipper:
+    model_dir: models/zipper/patchcore_v23
+    use_spatial_prior: true
+    image_threshold: 1.47
+    pixel_threshold: 0.91
+    gaussian_sigma: 1.20
+    morphology_kernel: 3
+    min_region_area: 25
+    border_margin: 5
+    merge_distance: 15.0
+
+  screw:
+    model_dir: models/screw/patchcore_v23
+    use_spatial_prior: true
+    image_threshold: 2.28
+    pixel_threshold: 2.00
+    gaussian_sigma: 1.20
+    morphology_kernel: 3
+    min_region_area: 25
+    border_margin: 5
+    merge_distance: 15.0
