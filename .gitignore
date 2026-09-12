@@ -1,0 +1,46 @@
+# ====================================================================
+# VisionInspect - Git Ignore Configuration
+# ====================================================================
+
+# Python virtual environment
+visioninspect_py312/
+venv/
+.venv/
+env/
+ENV/
+
+# MVTec AD Dataset (DO NOT COMMIT DATASET)
+dataset/
+dataset/**
+mvtec_anomaly_detection/
+
+# Python Bytecode and Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Environment, Secrets, and Credentials
+.env
+.env.*
+*.pem
+*.key
+
+# Logging & System Task Logs
+*.log
+*.tmp
+task-*.log
+
+# Model Weights & Memory Banks (Exceeds GitHub 100MB file limit; keep local & reproducible via scripts)
+*.pt
+*.pth
+!models/**/.gitkeep
+
+# OS and Editor specific
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
