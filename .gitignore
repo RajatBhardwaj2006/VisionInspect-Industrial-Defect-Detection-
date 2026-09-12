@@ -44,3 +44,11 @@ task-*.log
 Thumbs.db
 .idea/
 .vscode/
+
+# Runtime Prediction & Diagnostic Output Dumps
+results/predictions/
+results/comparisons/
+results/*_diagnostic/
+results/heatmaps/
+results/eda/
+
