@@ -1,0 +1,6 @@
+category,calibration_strategy,normal_images_total,normal_images_val,mean_normal_score,std_normal_score,p95_image_score,p98_image_score,p99_image_score,max_normal_score,p995_pixel_score,locked_image_threshold,locked_pixel_threshold,locked_gaussian_sigma,locked_morphology_kernel,locked_min_region_area,locked_border_margin,locked_merge_distance,use_spatial_prior
+bottle,unsupervised_normal_split,209,41,1.3627,0.3183,1.9423,2.0226,2.1421,2.2617,0.6621,2.06,0.66,1.2,3,25,5,15.0,True
+leather,unsupervised_normal_split,245,49,2.124,0.2911,2.6638,2.8983,3.0718,3.2452,1.7129,2.96,1.71,1.2,3,25,5,15.0,False
+transistor,unsupervised_normal_split,213,42,2.0504,0.5609,2.9298,3.346,3.7294,4.1128,1.1785,3.41,1.18,1.2,3,25,5,15.0,True
+zipper,unsupervised_normal_split,240,48,1.1198,0.5877,1.8781,2.6624,3.2869,3.9115,0.5684,2.72,0.57,1.2,3,25,5,15.0,True
+screw,unsupervised_normal_split,320,64,2.2073,0.2382,2.5581,2.8914,3.0057,3.0281,1.656,2.95,1.66,1.2,3,25,5,15.0,True
