@@ -52,3 +52,9 @@ results/*_diagnostic/
 results/heatmaps/
 results/eda/
 
+# Scratch & temporary scripts
+temp_pipeline.py
+test_env.py
+test_env.ipynb
+
+
