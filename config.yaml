@@ -104,3 +104,67 @@ categories:
     min_region_area: 25
     border_margin: 5
     merge_distance: 15.0
+
+# Phase 3.2 Category-Aware Configuration (Localization Improvements)
+# These parameters are calibrated using only normal training validation data.
+# Image/pixel thresholds are preserved from Phase 3.1 locked_thresholds.json.
+# The prior_mode: 'p75' uses a softer 75th-percentile spatial prior to reduce
+# over-suppression of defect signals near structural product features.
+# Parameters are loaded by calibrate_phase3_2.py and run_phase3_2_eval.py.
+phase3_2_categories:
+  bottle:
+    model_dir: models/bottle/patchcore_v23
+    use_spatial_prior: true
+    prior_mode: p75
+    image_threshold: 2.06
+    pixel_threshold: 0.66
+    morphology_kernel: 3
+    border_margin: 3
+    min_region_area: 25
+    merge_distance: 15.0
+
+  leather:
+    model_dir: models/leather/patchcore_v23
+    use_spatial_prior: false
+    prior_mode: mean
+    image_threshold: 2.90
+    pixel_threshold: 1.71
+    morphology_kernel: 3
+    border_margin: 5
+    min_region_area: 50
+    merge_distance: 15.0
+
+  transistor:
+    model_dir: models/transistor/patchcore_v23
+    use_spatial_prior: true
+    prior_mode: mean
+    image_threshold: 3.20
+    pixel_threshold: 1.18
+    morphology_kernel: 2
+    border_margin: 1
+    min_region_area: 10
+    merge_distance: 12.0
+
+  zipper:
+    model_dir: models/zipper/patchcore_v23
+    use_spatial_prior: true
+    prior_mode: mean
+    image_threshold: 2.00
+    pixel_threshold: 0.57
+    morphology_kernel: 2
+    border_margin: 1
+    min_region_area: 15
+    merge_distance: 10.0
+
+  screw:
+    model_dir: models/screw/patchcore_v23
+    use_spatial_prior: true
+    prior_mode: mean
+    image_threshold: 2.65
+    pixel_threshold: 1.66
+    morphology_kernel: 2
+    border_margin: 1
+    min_region_area: 10
+    merge_distance: 12.0
+
+

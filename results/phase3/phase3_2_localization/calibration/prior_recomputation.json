@@ -1,0 +1,12 @@
+[
+    {
+        "category": "bottle",
+        "status": "computed",
+        "model_dir": "models\\bottle\\patchcore_v23",
+        "n_training_images": 209,
+        "mean_prior_avg": 0.5832,
+        "p75_prior_avg": 0.6777,
+        "suppression_diff_mean_to_p75": 0.0945,
+        "p75_path": "models\\bottle\\patchcore_v23\\spatial_prior_p75.pt"
+    }
+]
