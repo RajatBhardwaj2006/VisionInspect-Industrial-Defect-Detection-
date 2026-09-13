@@ -43,8 +43,11 @@ def extract_tight_regions(clean_mask: np.ndarray, border_margin: int = 5) -> Lis
         x_min, x_max = int(xs.min()), int(xs.max())
         y_min, y_max = int(ys.min()), int(ys.max())
         
-        if (x_min <= border_margin or x_max >= W - border_margin or
-            y_min <= border_margin or y_max >= H - border_margin):
+        # Phase 3.2: Strict less-than comparison.
+        # border_margin=0 means no exclusion.
+        # border_margin=2 means exclude x_min in {0,1}, x_max in {254,255}, etc.
+        if (x_min < border_margin or x_max > W - 1 - border_margin or
+                y_min < border_margin or y_max > H - 1 - border_margin):
             continue
             
         w = x_max - x_min + 1
@@ -166,15 +169,33 @@ class PatchCoreDetectorV23:
         self.min_region_area = cat_cfg.get("min_region_area", 25)
         self.border_margin = cat_cfg.get("border_margin", 5)
         self.merge_distance = cat_cfg.get("merge_distance", 15.0)
-        
+
+        # Phase 3.2: prior_mode — auto-detect p75 if available, else fall back to mean
+        self.prior_mode = cat_cfg.get("prior_mode", "mean")
+        # Auto-upgrade to p75 if the p75 prior file exists and prior_mode not explicitly set to 'mean'
+        p75_path = dir_path / "spatial_prior_p75.pt"
+        if p75_path.exists() and self.prior_mode != "mean":
+            self.prior_mode = "p75"
+        elif p75_path.exists() and cat_cfg.get("prior_mode", "") == "p75":
+            self.prior_mode = "p75"
+        # Load p75 prior into model if available
+        if p75_path.exists() and self.model.normal_spatial_prior_p75 is None:
+            import torch as _torch
+            self.model.normal_spatial_prior_p75 = _torch.load(
+                p75_path, map_location=self.device, weights_only=True
+            ).to(self.device)
+
         print(f"[PatchCoreDetectorV23] Initialized:")
         print(f"  Requested Category:  {self.category}")
         print(f"  Loaded Category:     {self.loaded_category}")
         print(f"  Model Version:       {self.model_version}")
         print(f"  Memory Bank Path:    {self.model_dir}")
         print(f"  Use Spatial Prior:   {self.use_spatial_prior}")
+        print(f"  Prior Mode:          {self.prior_mode}")
         print(f"  Image Threshold:     {self.image_threshold:.4f}")
         print(f"  Pixel Threshold:     {self.pixel_threshold:.4f}")
+        print(f"  Border Margin:       {self.border_margin}")
+        print(f"  Min Region Area:     {self.min_region_area}")
 
     def inspect(self, image_input: Any) -> Dict[str, Any]:
         if isinstance(image_input, (str, Path)):
@@ -202,7 +223,8 @@ class PatchCoreDetectorV23:
         img_tensor = transform(original_pil).unsqueeze(0).to(self.device)
 
         # 1. Predict anomaly score & spatial map using category-specific spatial prior setting
-        score, amap_tensor = self.model.predict(img_tensor, use_prior=self.use_spatial_prior)
+        score, amap_tensor = self.model.predict(img_tensor, use_prior=self.use_spatial_prior,
+                                                prior_mode=self.prior_mode)
         amap_np = amap_tensor.detach().cpu().numpy()
         
         # 2. Smooth map
@@ -286,6 +308,7 @@ class PatchCoreDetectorV23:
             "model_version": self.model_version,
             "model_dir": self.model_dir,
             "use_spatial_prior": self.use_spatial_prior,
+            "prior_mode": self.prior_mode,
             "status": status,
             "score": score,
             "image_threshold": self.image_threshold,
