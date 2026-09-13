@@ -1,0 +1,6 @@
+category,image_auroc,pixel_precision,pixel_recall,pixel_f1,pixel_iou,detection_rate,normal_accuracy,locked_image_threshold,locked_pixel_threshold,border_margin,min_region_area,morphology_kernel,prior_mode,total_test_images
+bottle,0.9929,0.4856,0.796,0.6032,0.4319,0.9841,0.95,2.06,0.66,3,25,3,p75,83
+leather,0.9236,0.1748,0.5533,0.2656,0.1532,0.7391,1.0,2.9,1.71,5,50,3,mean,124
+transistor,0.82,0.5323,0.0442,0.0816,0.0425,0.3,0.9333,3.2,1.18,1,10,2,mean,100
+zipper,0.8978,0.3797,0.312,0.3425,0.2066,0.6807,0.9062,2.0,0.57,1,15,2,mean,151
+screw,0.8774,0.1809,0.5795,0.2757,0.1599,0.6639,1.0,2.65,1.66,1,10,2,mean,160

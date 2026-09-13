@@ -1,0 +1,36 @@
+category,metric,phase_3_1,phase_3_2,delta,direction
+bottle,AUROC,0.9929,0.9929,0.0,=
+bottle,Precision,0.4118,0.4856,0.0738,+
+bottle,Recall,0.8951,0.796,-0.0991,-
+bottle,F1,0.5641,0.6032,0.0391,+
+bottle,IoU,0.3928,0.4319,0.0391,+
+bottle,Det.Rate,0.9683,0.9841,0.0158,+
+bottle,Normal Acc,0.95,0.95,0.0,=
+leather,AUROC,0.9239,0.9236,-0.0003,-
+leather,Precision,0.1074,0.1748,0.0674,+
+leather,Recall,0.7872,0.5533,-0.2339,-
+leather,F1,0.189,0.2656,0.0766,+
+leather,IoU,0.1044,0.1532,0.0488,+
+leather,Det.Rate,0.7283,0.7391,0.0108,+
+leather,Normal Acc,0.9688,1.0,0.0312,+
+screw,AUROC,0.8776,0.8774,-0.0002,-
+screw,Precision,0.1945,0.1809,-0.0136,-
+screw,Recall,0.4065,0.5795,0.173,+
+screw,F1,0.2631,0.2757,0.0126,+
+screw,IoU,0.1515,0.1599,0.0084,+
+screw,Det.Rate,0.4286,0.6639,0.2353,+
+screw,Normal Acc,1.0,1.0,0.0,=
+transistor,AUROC,0.82,0.82,0.0,=
+transistor,Precision,0.6386,0.5323,-0.1063,-
+transistor,Recall,0.1059,0.0442,-0.0617,-
+transistor,F1,0.1817,0.0816,-0.1001,-
+transistor,IoU,0.0999,0.0425,-0.0574,-
+transistor,Det.Rate,0.15,0.3,0.15,+
+transistor,Normal Acc,1.0,0.9333,-0.0667,-
+zipper,AUROC,0.8981,0.8978,-0.0003,-
+zipper,Precision,0.2553,0.3797,0.1244,+
+zipper,Recall,0.3619,0.312,-0.0499,-
+zipper,F1,0.2994,0.3425,0.0431,+
+zipper,IoU,0.176,0.2066,0.0306,+
+zipper,Det.Rate,0.3361,0.6807,0.3446,+
+zipper,Normal Acc,1.0,0.9062,-0.0938,-
