@@ -1,4 +1,6 @@
 import os
+import io
+import base64
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -300,26 +302,69 @@ class PatchCoreDetectorV23:
         saved_path = results_dir / f"patchcore_v23_{self.category}_{defect_type}_{stem}_result.png"
 
         amap_resized = cv2.resize(smooth_map, (orig_w, orig_h))
-        heatmap_img = plt.get_cmap('jet')(amap_resized / (amap_resized.max() + 1e-8))[:, :, :3]
-        overlay = (0.5 * original_np / 255.0 + 0.5 * heatmap_img)
-        
+        norm_amap = amap_resized / (amap_resized.max() + 1e-8)
+        heatmap_rgba = plt.get_cmap('jet')(norm_amap)
+        heatmap_rgb = heatmap_rgba[:, :, :3]
+        overlay_rgb = (0.5 * original_np / 255.0 + 0.5 * heatmap_rgb)
+
+        # 1. Generate standalone pure heatmap image (in-memory base64)
+        buf_hm = io.BytesIO()
         plt.figure(figsize=(6, 6))
-        plt.imshow(np.clip(overlay, 0, 1))
+        plt.imshow(heatmap_rgb)
+        plt.axis('off')
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        plt.savefig(buf_hm, format='png', bbox_inches='tight', pad_inches=0)
+        plt.close()
+        buf_hm.seek(0)
+        heatmap_base64 = base64.b64encode(buf_hm.read()).decode("utf-8")
+
+        # 2. Generate overlay with bounding boxes
+        buf_ov = io.BytesIO()
+        plt.figure(figsize=(6, 6))
+        plt.imshow(np.clip(overlay_rgb, 0, 1))
         if is_defective:
-            for r in scaled_regions:
+            for ridx, r in enumerate(scaled_regions):
                 bx, by, bw, bh = r["x"], r["y"], r["width"], r["height"]
                 rect = plt.Rectangle((bx, by), bw, bh, linewidth=2, edgecolor='red', facecolor='none')
                 plt.gca().add_patch(rect)
+                plt.text(bx, max(0, by - 4), f"R{ridx+1}", color='red', fontsize=10, weight='bold',
+                         bbox=dict(boxstyle='square,pad=0.1', facecolor='yellow', alpha=0.7, edgecolor='none'))
         plt.axis('off')
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        plt.savefig(buf_ov, format='png', bbox_inches='tight', pad_inches=0)
+        # Also save to disk for backward compatibility with existing tests
         plt.savefig(saved_path, bbox_inches='tight', pad_inches=0)
         plt.close()
+        buf_ov.seek(0)
+        overlay_base64 = base64.b64encode(buf_ov.read()).decode("utf-8")
 
-        explanation = (
-            f"Image classified as DEFECTIVE because feature anomaly score {score:.4f} exceeded "
-            f"category threshold {self.image_threshold:.4f} with {len(scaled_regions)} localized anomaly region(s)."
-            if is_defective else
-            f"Image classified as NORMAL. Anomaly score {score:.4f} is within acceptable threshold {self.image_threshold:.4f}."
-        )
+        # Clear 1-2 line plain-language explanations
+        decision_margin = round(float(score - self.image_threshold), 4)
+        if is_defective:
+            explanation = (
+                f"An abnormal visual pattern was detected and localized in {len(scaled_regions)} region(s). "
+                f"The highlighted areas show where the model found the strongest anomaly response."
+            )
+            why_explanation = (
+                "The model detected visual features that differ significantly from normal patterns. "
+                "The highlighted regions indicate the strongest localized anomaly areas."
+            )
+        elif score > self.image_threshold and len(scaled_regions) == 0:
+            explanation = (
+                "An elevated anomaly signal was detected, but no localized region satisfied the final defect criteria. "
+                "Final inspection status: NORMAL."
+            )
+            why_explanation = (
+                "Although the raw feature score slightly exceeded the image threshold, no connected cluster "
+                "passed the minimum defect area and morphology requirements. The part is accepted as NORMAL."
+            )
+        else:
+            explanation = (
+                "No significant anomaly region was detected. The image is within the calibrated acceptance criteria."
+            )
+            why_explanation = (
+                "The model found no localized region that satisfied the category's anomaly decision criteria."
+            )
 
         return {
             "category": self.category,
@@ -332,9 +377,14 @@ class PatchCoreDetectorV23:
             "score": score,
             "image_threshold": self.image_threshold,
             "pixel_threshold": self.pixel_threshold,
+            "decision_margin": decision_margin,
             "bounding_box": bounding_box or "None",
             "localized_regions": scaled_regions if is_defective else [],
             "clean_mask": clean_mask if is_defective else np.zeros((256, 256), dtype=bool),
             "explanation": explanation,
+            "why_explanation": why_explanation,
+            "heatmap_base64": heatmap_base64,
+            "overlay_base64": overlay_base64,
+            "visualization_base64": overlay_base64,
             "saved_path": str(saved_path)
         }

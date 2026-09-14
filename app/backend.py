@@ -3,6 +3,7 @@ import sys
 import io
 import time
 import base64
+import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -156,14 +157,19 @@ def _process_single_image(
             "aspect_ratio": round(float(w / max(1, h)), 2)
         })
         
-    vis_base64 = None
-    if return_visualizations and "saved_path" in result:
+    req_id = f"req_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
+    vis_base64 = result.get("visualization_base64")
+    if not vis_base64 and return_visualizations and "saved_path" in result:
         saved_p = Path(result["saved_path"])
         if saved_p.exists():
             with open(saved_p, "rb") as f:
                 vis_base64 = base64.b64encode(f.read()).decode("utf-8")
                 
+    heatmap_base64 = result.get("heatmap_base64")
+    decision_margin = result.get("decision_margin", round(float(result["score"] - result["image_threshold"]), 4))
+
     return {
+        "request_id": req_id,
         "filename": Path(filename).name if filename else "image.png",
         "category": category,
         "model": "PatchCore v2.3",
@@ -173,12 +179,16 @@ def _process_single_image(
         "anomaly_score": round(float(result["score"]), 4),
         "image_threshold": round(float(result["image_threshold"]), 4),
         "pixel_threshold": round(float(result["pixel_threshold"]), 4),
+        "decision_margin": decision_margin,
         "num_defects": len(defect_regions),
         "localized_regions": defect_regions,
         "defect_regions": defect_regions,
+        "heatmap_base64": heatmap_base64,
         "visualization_base64": vis_base64,
         "inference_time_ms": round(t_elapsed, 2),
+        "inference_time_s": round(t_elapsed / 1000.0, 2),
         "explanation": result["explanation"],
+        "why_explanation": result.get("why_explanation", ""),
         "category_compatibility": comp_result,
         "compatibility": comp_result,
         "category_warning": comp_result.get("warning_message")
