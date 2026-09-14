@@ -10,6 +10,6 @@
     ],
     "version": "2.3",
     "category": "transistor",
-    "use_spatial_prior": true,
+    "use_spatial_prior": false,
     "n_train_images": 213
 }

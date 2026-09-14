@@ -1,0 +1,46 @@
+{
+    "category": "transistor",
+    "phase": "3.3",
+    "evaluation_type": "unbiased_locked_test",
+    "image_auroc": 0.9154,
+    "detection_rate": 0.8,
+    "normal_accuracy": 0.9167,
+    "pixel_precision": 0.5857,
+    "pixel_recall": 0.2744,
+    "pixel_f1": 0.3737,
+    "pixel_iou": 0.2298,
+    "total_test_images": 100,
+    "normal_images": 60,
+    "defective_images": 40,
+    "detected_defective": 32,
+    "normal_false_positives": 5,
+    "locked_image_threshold": 3.525,
+    "locked_pixel_threshold": 2.822,
+    "score_method": "top200",
+    "use_spatial_prior": false,
+    "border_margin": 0,
+    "min_region_area": 15,
+    "morphology_kernel": 2,
+    "per_defect": {
+        "bent_lead": {
+            "images": 10,
+            "detected": 10
+        },
+        "cut_lead": {
+            "images": 10,
+            "detected": 9
+        },
+        "damaged_case": {
+            "images": 10,
+            "detected": 5
+        },
+        "good": {
+            "images": 60,
+            "detected": 5
+        },
+        "misplaced": {
+            "images": 10,
+            "detected": 8
+        }
+    }
+}

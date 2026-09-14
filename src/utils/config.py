@@ -70,11 +70,18 @@ def get_category_config(category: str, config: Optional[Dict[str, Any]] = None, 
     default_spatial_prior = False if category in known_textures else True
     
     cat_specific = categories_cfg.get(category, {})
+    # Fallback / override from phase3_2_categories if specified
+    phase32_cat = config.get("phase3_2_categories", {}).get(category, {})
+    for k, v in phase32_cat.items():
+        if k not in cat_specific:
+            cat_specific[k] = v
     
     merged = {
         "category": category,
         "model_dir": cat_specific.get("model_dir", f"models/{category}/patchcore_v23"),
         "use_spatial_prior": cat_specific.get("use_spatial_prior", default_spatial_prior),
+        "prior_mode": cat_specific.get("prior_mode", "mean"),
+        "image_score_method": cat_specific.get("image_score_method", config.get("detection", {}).get("image_score_method", "max_raw")),
         "image_threshold": cat_specific.get("image_threshold", base_v23.get("image_threshold", 1.50)),
         "pixel_threshold": cat_specific.get("pixel_threshold", base_v23.get("pixel_threshold", 1.40)),
         "gaussian_sigma": cat_specific.get("gaussian_sigma", base_v23.get("gaussian_sigma", 1.20)),

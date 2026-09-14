@@ -157,7 +157,8 @@ class PatchCoreDetectorV23:
                     meta = json.load(f)
                     self.loaded_category = meta.get("category", self.category)
                     self.model_version = meta.get("version", "2.3")
-                    if "use_spatial_prior" in meta:
+                    # Fallback to metadata default only if not explicitly configured in cat_cfg
+                    if "use_spatial_prior" in meta and "use_spatial_prior" not in cat_cfg:
                         self.use_spatial_prior = bool(meta["use_spatial_prior"])
             except Exception:
                 pass
@@ -169,6 +170,7 @@ class PatchCoreDetectorV23:
         self.min_region_area = cat_cfg.get("min_region_area", 25)
         self.border_margin = cat_cfg.get("border_margin", 5)
         self.merge_distance = cat_cfg.get("merge_distance", 15.0)
+        self.image_score_method = cat_cfg.get("image_score_method", "max_raw")
 
         # Phase 3.2: prior_mode — auto-detect p75 if available, else fall back to mean
         self.prior_mode = cat_cfg.get("prior_mode", "mean")
@@ -192,6 +194,7 @@ class PatchCoreDetectorV23:
         print(f"  Memory Bank Path:    {self.model_dir}")
         print(f"  Use Spatial Prior:   {self.use_spatial_prior}")
         print(f"  Prior Mode:          {self.prior_mode}")
+        print(f"  Score Method:        {self.image_score_method}")
         print(f"  Image Threshold:     {self.image_threshold:.4f}")
         print(f"  Pixel Threshold:     {self.pixel_threshold:.4f}")
         print(f"  Border Margin:       {self.border_margin}")
@@ -223,8 +226,8 @@ class PatchCoreDetectorV23:
         img_tensor = transform(original_pil).unsqueeze(0).to(self.device)
 
         # 1. Predict anomaly score & spatial map using category-specific spatial prior setting
-        score, amap_tensor = self.model.predict(img_tensor, use_prior=self.use_spatial_prior,
-                                                prior_mode=self.prior_mode)
+        raw_score, amap_tensor = self.model.predict(img_tensor, use_prior=self.use_spatial_prior,
+                                                    prior_mode=self.prior_mode)
         amap_np = amap_tensor.detach().cpu().numpy()
         
         # 2. Smooth map
@@ -232,6 +235,22 @@ class PatchCoreDetectorV23:
             smooth_map = cv2.GaussianBlur(amap_np, (0, 0), sigmaX=self.gaussian_sigma)
         else:
             smooth_map = amap_np
+
+        # Compute image-level score using configured image_score_method
+        if self.image_score_method == "top200":
+            score = float(np.sort(smooth_map.flatten())[-200:].mean())
+        elif self.image_score_method == "top250":
+            score = float(np.sort(smooth_map.flatten())[-250:].mean())
+        elif self.image_score_method == "top100":
+            score = float(np.sort(smooth_map.flatten())[-100:].mean())
+        elif self.image_score_method in ["p99.5", "top_0.5pct"]:
+            score = float(np.percentile(smooth_map.flatten(), 99.5))
+        elif self.image_score_method in ["p99.9", "top_0.1pct"]:
+            score = float(np.percentile(smooth_map.flatten(), 99.9))
+        elif self.image_score_method in ["top_1pct", "p99.0"]:
+            score = float(np.percentile(smooth_map.flatten(), 99.0))
+        else:
+            score = raw_score
             
         # 3. Direct absolute distance thresholding
         bin_mask = (smooth_map > self.pixel_threshold)

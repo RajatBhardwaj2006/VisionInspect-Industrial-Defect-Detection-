@@ -74,14 +74,15 @@ categories:
 
   transistor:
     model_dir: models/transistor/patchcore_v23
-    use_spatial_prior: true
-    image_threshold: 2.69
-    pixel_threshold: 0.88
+    use_spatial_prior: false
+    image_score_method: top200
+    image_threshold: 3.525
+    pixel_threshold: 2.822
     gaussian_sigma: 1.20
-    morphology_kernel: 3
-    min_region_area: 25
-    border_margin: 5
-    merge_distance: 15.0
+    morphology_kernel: 2
+    min_region_area: 15
+    border_margin: 0
+    merge_distance: 12.0
 
   zipper:
     model_dir: models/zipper/patchcore_v23
@@ -136,13 +137,14 @@ phase3_2_categories:
 
   transistor:
     model_dir: models/transistor/patchcore_v23
-    use_spatial_prior: true
-    prior_mode: mean
-    image_threshold: 3.20
-    pixel_threshold: 1.18
+    use_spatial_prior: false
+    prior_mode: none
+    image_score_method: top200
+    image_threshold: 3.525
+    pixel_threshold: 2.822
     morphology_kernel: 2
-    border_margin: 1
-    min_region_area: 10
+    border_margin: 0
+    min_region_area: 15
     merge_distance: 12.0
 
   zipper:
