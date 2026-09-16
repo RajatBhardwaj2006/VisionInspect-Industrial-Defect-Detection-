@@ -151,6 +151,8 @@ def _process_single_image(
         h = reg["height"]
         defect_regions.append({
             "id": idx + 1,
+            "label": reg.get("label", f"Region {idx+1:02d}"),
+            "intensity": reg.get("intensity", "Anomaly Region"),
             "bbox": [reg["x"], reg["y"], w, h],
             "area": reg["area"],
             "score": round(float(reg.get("score", 0.0)), 4),

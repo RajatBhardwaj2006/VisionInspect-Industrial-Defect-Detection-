@@ -302,39 +302,53 @@ class PatchCoreDetectorV23:
         saved_path = results_dir / f"patchcore_v23_{self.category}_{defect_type}_{stem}_result.png"
 
         amap_resized = cv2.resize(smooth_map, (orig_w, orig_h))
-        norm_amap = amap_resized / (amap_resized.max() + 1e-8)
+        
+        # Category-aware visualization normalization (preserves model scores & thresholds untouched)
+        pix_th = float(self.pixel_threshold)
+        vmax = max(pix_th * 1.35, float(amap_resized.max()))
+        norm_amap = np.clip(amap_resized / (vmax + 1e-8), 0.0, 1.0)
+        
+        # Perceptual colormap & smooth alpha blending
+        # Normal areas (< 0.20) are fully transparent, revealing crisp original product image
         heatmap_rgba = plt.get_cmap('jet')(norm_amap)
         heatmap_rgb = heatmap_rgba[:, :, :3]
-        overlay_rgb = (0.5 * original_np / 255.0 + 0.5 * heatmap_rgb)
+        orig_norm = original_np.astype(np.float32) / 255.0
+        alpha = np.clip((norm_amap - 0.20) / 0.80, 0.0, 0.65)
+        alpha_3d = np.expand_dims(alpha, axis=2)
+        blended_heatmap = np.clip((1.0 - alpha_3d) * orig_norm + alpha_3d * heatmap_rgb, 0.0, 1.0)
 
-        # 1. Generate standalone pure heatmap image (in-memory base64)
+        # 1. Generate Panel 2 Anomaly Heatmap: Original image blended with translucent heatmap
+        hm_pil = Image.fromarray((blended_heatmap * 255.0).astype(np.uint8))
         buf_hm = io.BytesIO()
-        plt.figure(figsize=(6, 6))
-        plt.imshow(heatmap_rgb)
-        plt.axis('off')
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
-        plt.savefig(buf_hm, format='png', bbox_inches='tight', pad_inches=0)
-        plt.close()
-        buf_hm.seek(0)
-        heatmap_base64 = base64.b64encode(buf_hm.read()).decode("utf-8")
+        hm_pil.save(buf_hm, format='PNG')
+        heatmap_base64 = base64.b64encode(buf_hm.getvalue()).decode("utf-8")
 
-        # 2. Generate overlay with bounding boxes
-        buf_ov = io.BytesIO()
-        plt.figure(figsize=(6, 6))
-        plt.imshow(np.clip(overlay_rgb, 0, 1))
-        if is_defective:
+        # 2. Generate Panel 3 Defect Localization: Original + heatmap + clean labeled bounding boxes
+        fig, ax = plt.subplots(figsize=(max(4.0, orig_w / 100.0), max(4.0, orig_h / 100.0)), dpi=100)
+        ax.imshow(blended_heatmap)
+        if is_defective and scaled_regions:
             for ridx, r in enumerate(scaled_regions):
                 bx, by, bw, bh = r["x"], r["y"], r["width"], r["height"]
-                rect = plt.Rectangle((bx, by), bw, bh, linewidth=2, edgecolor='red', facecolor='none')
-                plt.gca().add_patch(rect)
-                plt.text(bx, max(0, by - 4), f"R{ridx+1}", color='red', fontsize=10, weight='bold',
-                         bbox=dict(boxstyle='square,pad=0.1', facecolor='yellow', alpha=0.7, edgecolor='none'))
-        plt.axis('off')
+                rect = plt.Rectangle((bx, by), bw, bh, linewidth=2.5, edgecolor='#EF4444', facecolor='none')
+                ax.add_patch(rect)
+                reg_score = r.get("max_val", r.get("score", 0.0))
+                intensity_tag = "High Anomaly" if reg_score > self.pixel_threshold * 1.15 else "Medium Anomaly"
+                r["intensity"] = intensity_tag
+                r["label"] = f"Region {ridx+1:02d}"
+                ax.text(
+                    bx, max(0, by - 6),
+                    f"Region {ridx+1:02d}",
+                    color='#FFFFFF',
+                    fontsize=9,
+                    fontweight='bold',
+                    bbox=dict(boxstyle='round,pad=0.25', facecolor='#DC2626', alpha=0.9, edgecolor='none')
+                )
+        ax.axis('off')
         plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
-        plt.savefig(buf_ov, format='png', bbox_inches='tight', pad_inches=0)
-        # Also save to disk for backward compatibility with existing tests
-        plt.savefig(saved_path, bbox_inches='tight', pad_inches=0)
-        plt.close()
+        buf_ov = io.BytesIO()
+        fig.savefig(buf_ov, format='png', bbox_inches='tight', pad_inches=0, dpi=100)
+        fig.savefig(saved_path, bbox_inches='tight', pad_inches=0, dpi=100)
+        plt.close(fig)
         buf_ov.seek(0)
         overlay_base64 = base64.b64encode(buf_ov.read()).decode("utf-8")
 

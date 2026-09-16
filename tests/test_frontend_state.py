@@ -132,3 +132,60 @@ def test_state_purge_logic():
     assert simulated_session_state["custom_image_name"] is None
     assert simulated_session_state["quick_sample_choice"] is None
     assert simulated_session_state["selected_category"] == "leather"
+
+
+def test_defect_region_labels_and_intensity(client):
+    """Verify that localized defect regions have Region XX labels and anomaly intensity tags."""
+    img_path = Path("dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png")
+    if not img_path.exists():
+        pytest.skip("Test sample not found")
+
+    with open(img_path, "rb") as f:
+        img_bytes = f.read()
+
+    response = client.post(
+        "/predict",
+        data={"category": "bottle", "return_visualizations": "true"},
+        files={"file": ("000.png", io.BytesIO(img_bytes), "image/png")}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "DEFECTIVE"
+    assert len(data["defect_regions"]) > 0
+
+    first_reg = data["defect_regions"][0]
+    assert "label" in first_reg
+    assert first_reg["label"].startswith("Region ")
+    assert "intensity" in first_reg
+    assert "Anomaly" in first_reg["intensity"]
+
+
+def test_consecutive_inspection_isolation(client):
+    """Verify consecutive inspections on different categories maintain isolated request_ids and categories."""
+    p_bottle = Path("dataset/mvtec_anomaly_detection/bottle/test/good/001.png")
+    p_screw = Path("dataset/mvtec_anomaly_detection/screw/test/good/001.png")
+    if not (p_bottle.exists() and p_screw.exists()):
+        pytest.skip("Test samples not found")
+
+    with open(p_bottle, "rb") as f:
+        b_bytes = f.read()
+    with open(p_screw, "rb") as f:
+        s_bytes = f.read()
+
+    res1 = client.post(
+        "/predict",
+        data={"category": "bottle", "return_visualizations": "false"},
+        files={"file": ("bottle_good.png", io.BytesIO(b_bytes), "image/png")}
+    ).json()
+
+    res2 = client.post(
+        "/predict",
+        data={"category": "screw", "return_visualizations": "false"},
+        files={"file": ("screw_good.png", io.BytesIO(s_bytes), "image/png")}
+    ).json()
+
+    assert res1["category"] == "bottle"
+    assert res2["category"] == "screw"
+    assert res1["request_id"] != res2["request_id"]
+
