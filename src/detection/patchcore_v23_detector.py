@@ -19,6 +19,39 @@ from src.models.patchcore_v22 import PatchCoreModelV22
 from src.detection.localization import postprocess_anomaly_map
 from src.utils.config import load_config, get_category_config
 
+CATEGORY_EXPLANATIONS = {
+    "bottle": {
+        "defective": "Structural anomaly detected on container surface (crack, chipping, or contamination).",
+        "normal": "No significant anomaly detected. Container surface is acceptable and within calibrated quality criteria.",
+        "why_defective": "Multi-scale patch embeddings detected optical irregularities exceeding the calibrated threshold on the bottle surface.",
+        "why_normal": "Bottle geometry and surface reflections match the calibrated normal baseline without anomalous regions."
+    },
+    "leather": {
+        "defective": "Surface anomaly identified on leather material (cut, hole, color flaw, or fold mark).",
+        "normal": "No significant anomaly detected. Leather grain texture is acceptable and within calibrated criteria.",
+        "why_defective": "Significant patch descriptor distance from the normal texture memory bank localized to specific surface flaws.",
+        "why_normal": "The natural grain texture is within nominal tolerance; no abnormal surface defects detected."
+    },
+    "transistor": {
+        "defective": "Semiconductor defect identified (lead displacement/cut, casing damage, or component misalignment).",
+        "normal": "No significant anomaly detected. Transistor pin alignment is acceptable and within calibrated criteria.",
+        "why_defective": "Lead pin geometries, casing integrity, or component placement diverge significantly from golden standard units.",
+        "why_normal": "Lead integrity and casing geometry match the trained normal semiconductor distribution."
+    },
+    "zipper": {
+        "defective": "Fastener chain defect detected (broken/split teeth, missing element, or fabric roughness).",
+        "normal": "No significant anomaly detected. Zipper teeth interlocking is acceptable and within calibrated criteria.",
+        "why_defective": "Interlocking tooth spacing or fabric weave deviates from the learned normal distribution.",
+        "why_normal": "Uniform tooth alignment and weave texture confirmed without anomalous disruptions."
+    },
+    "screw": {
+        "defective": "Thread deformation, head scratch, or surface damage detected in fastener component.",
+        "normal": "No significant anomaly detected. Screw thread geometry is acceptable and within calibrated criteria.",
+        "why_defective": "Localized feature anomalies identified along the helical threads or drive head.",
+        "why_normal": "All thread crests and fastener surfaces correspond with nominal reference templates."
+    }
+}
+
 def postprocess_clean_mask(bin_mask: np.ndarray, kernel_size: int = 3, min_area: int = 25) -> np.ndarray:
     """Morphological closing then opening + connected component noise filtering."""
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
@@ -173,6 +206,9 @@ class PatchCoreDetectorV23:
         self.border_margin = cat_cfg.get("border_margin", 5)
         self.merge_distance = cat_cfg.get("merge_distance", 15.0)
         self.image_score_method = cat_cfg.get("image_score_method", "max_raw")
+        self.enable_presence_check = cat_cfg.get("enable_presence_check", False)
+        self.presence_threshold = cat_cfg.get("presence_threshold", 60000)
+        self.enable_canonicalization = cat_cfg.get("enable_canonicalization", False)
 
         # Phase 3.2: prior_mode — auto-detect p75 if available, else fall back to mean
         self.prior_mode = cat_cfg.get("prior_mode", "mean")
@@ -220,12 +256,31 @@ class PatchCoreDetectorV23:
         original_np = np.array(original_pil)
         orig_h, orig_w, _ = original_np.shape
 
+        working_pil = original_pil
+        if self.enable_canonicalization and self.category == "transistor":
+            gray_full = cv2.cvtColor(original_np, cv2.COLOR_RGB2GRAY)
+            ch, cw = orig_h // 2, orig_w // 2
+            rad_h, rad_w = int(orig_h * 0.22), int(orig_w * 0.22)
+            center_roi = gray_full[ch - rad_h : ch + rad_h, cw - rad_w : cw + rad_w]
+            _, thresh = cv2.threshold(center_roi, 65, 255, cv2.THRESH_BINARY_INV)
+            cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if cnts:
+                large_cnt = max(cnts, key=cv2.contourArea)
+                if cv2.contourArea(large_cnt) > (center_roi.shape[0] * center_roi.shape[1]) * 0.15:
+                    rect = cv2.minAreaRect(large_cnt)
+                    angle = rect[-1]
+                    rot_ang = -(angle + 90) if angle < -45 else -angle
+                    if 3.0 < abs(rot_ang) < 42.0:
+                        M = cv2.getRotationMatrix2D((orig_w / 2.0, orig_h / 2.0), rot_ang, 1.0)
+                        rotated_np = cv2.warpAffine(original_np, M, (orig_w, orig_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+                        working_pil = Image.fromarray(rotated_np)
+
         transform = T.Compose([
             T.Resize((256, 256)),
             T.ToTensor(),
         ])
         
-        img_tensor = transform(original_pil).unsqueeze(0).to(self.device)
+        img_tensor = transform(working_pil).unsqueeze(0).to(self.device)
 
         # 1. Predict anomaly score & spatial map using category-specific spatial prior setting
         raw_score, amap_tensor = self.model.predict(img_tensor, use_prior=self.use_spatial_prior,
@@ -264,6 +319,19 @@ class PatchCoreDetectorV23:
         regions = extract_tight_regions(clean_mask, border_margin=self.border_margin)
         merged_regions = merge_nearby_regions(regions, merge_dist=self.merge_distance)
         
+        # Presence Check (Component Missing Detection)
+        missing_component = False
+        norm_dark_count = 0.0
+        if self.enable_presence_check and self.category == "transistor":
+            gray_full = cv2.cvtColor(original_np, cv2.COLOR_RGB2GRAY)
+            ymin, ymax = int(0.3418 * orig_h), int(0.6582 * orig_h)
+            xmin, xmax = int(0.3418 * orig_w), int(0.6582 * orig_w)
+            center_sub = gray_full[ymin:ymax, xmin:xmax]
+            scale_factor = (1024.0 * 1024.0) / float(orig_h * orig_w)
+            norm_dark_count = float((center_sub < 60).sum()) * scale_factor
+            if norm_dark_count < self.presence_threshold:
+                missing_component = True
+
         # Score each region
         for reg in merged_regions:
             rx, ry, rw, rh = reg["x"], reg["y"], reg["width"], reg["height"]
@@ -274,8 +342,26 @@ class PatchCoreDetectorV23:
             
         merged_regions.sort(key=lambda r: r.get("total_mass", 0.0), reverse=True)
         
-        is_defective = (score > self.image_threshold) and (len(merged_regions) > 0)
-        status = "DEFECTIVE" if is_defective else "NORMAL"
+        if missing_component:
+            score = max(score, 4.50)
+            is_defective = True
+            status = "DEFECTIVE"
+            if len(merged_regions) == 0:
+                merged_regions.append({
+                    "x": 88,
+                    "y": 88,
+                    "width": 80,
+                    "height": 80,
+                    "area": 6400,
+                    "centroid": (128.0, 128.0),
+                    "score": 4.50,
+                    "max_val": 4.50,
+                    "total_mass": 28800.0
+                })
+                smooth_map[88:168, 88:168] = np.maximum(smooth_map[88:168, 88:168], 3.80)
+        else:
+            is_defective = (score > self.image_threshold) and (len(merged_regions) > 0)
+            status = "DEFECTIVE" if is_defective else "NORMAL"
 
         # Scale regions back to original image dimensions
         scale_x = orig_w / 256.0
@@ -352,17 +438,21 @@ class PatchCoreDetectorV23:
         buf_ov.seek(0)
         overlay_base64 = base64.b64encode(buf_ov.read()).decode("utf-8")
 
-        # Clear 1-2 line plain-language explanations
+        # Category-specific explanations
+        cat_meta = CATEGORY_EXPLANATIONS.get(self.category, {})
         decision_margin = round(float(score - self.image_threshold), 4)
-        if is_defective:
-            explanation = (
-                f"An abnormal visual pattern was detected and localized in {len(scaled_regions)} region(s). "
-                f"The highlighted areas show where the model found the strongest anomaly response."
-            )
+
+        if missing_component:
+            explanation = "Critical defect: Expected transistor component is missing from PCB mount."
             why_explanation = (
-                "The model detected visual features that differ significantly from normal patterns. "
-                "The highlighted regions indicate the strongest localized anomaly areas."
+                f"The central semiconductor body was not detected in its designated socket "
+                f"({int(norm_dark_count)} dark pixels vs {self.presence_threshold} calibrated threshold). Component is missing."
             )
+        elif is_defective:
+            def_text = cat_meta.get("defective", f"An abnormal visual pattern was detected and localized in {len(scaled_regions)} region(s).")
+            why_text = cat_meta.get("why_defective", "The model detected visual features that differ significantly from normal patterns.")
+            explanation = f"{def_text} Localized in {len(scaled_regions)} region(s)."
+            why_explanation = f"{why_text} The highlighted regions indicate the strongest localized anomaly areas."
         elif score > self.image_threshold and len(scaled_regions) == 0:
             explanation = (
                 "An elevated anomaly signal was detected, but no localized region satisfied the final defect criteria. "
@@ -373,12 +463,10 @@ class PatchCoreDetectorV23:
                 "passed the minimum defect area and morphology requirements. The part is accepted as NORMAL."
             )
         else:
-            explanation = (
-                "No significant anomaly region was detected. The image is within the calibrated acceptance criteria."
-            )
-            why_explanation = (
-                "The model found no localized region that satisfied the category's anomaly decision criteria."
-            )
+            norm_text = cat_meta.get("normal", "No significant anomaly region was detected. The image is within the calibrated acceptance criteria.")
+            why_text = cat_meta.get("why_normal", "The model found no localized region that satisfied the category's anomaly decision criteria.")
+            explanation = norm_text
+            why_explanation = why_text
 
         return {
             "category": self.category,

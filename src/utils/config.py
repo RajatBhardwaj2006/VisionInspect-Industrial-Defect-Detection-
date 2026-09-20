@@ -91,5 +91,8 @@ def get_category_config(category: str, config: Optional[Dict[str, Any]] = None, 
         "merge_distance": cat_specific.get("merge_distance", base_v23.get("merge_distance", 15.0)),
         "coreset_sampling_ratio": cat_specific.get("coreset_sampling_ratio", base_v23.get("coreset_sampling_ratio", 0.10)),
         "backbone": cat_specific.get("backbone", base_v23.get("backbone", "resnet18")),
+        "enable_presence_check": cat_specific.get("enable_presence_check", False),
+        "presence_threshold": cat_specific.get("presence_threshold", 60000),
+        "enable_canonicalization": cat_specific.get("enable_canonicalization", False),
     }
     return merged

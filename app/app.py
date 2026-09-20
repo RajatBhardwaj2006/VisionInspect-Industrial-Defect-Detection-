@@ -7,13 +7,14 @@ Palette:
   - Sky Blue:    #C8D9E6
   - Soft Beige:  #F5EFEB
   - Pure White:  #FFFFFF
-  - Accents:     #15803D (Pass) / #B91C1C (Fail)
+  - Accents:     #15803D (Pass) / #B91C1C (Fail) / #B45309 (Warning)
 """
 
 import os
 import io
 import time
 import base64
+import textwrap
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -34,16 +35,16 @@ st.set_page_config(
 DEFAULT_BACKEND_URL = os.environ.get("VISIONINSPECT_BACKEND_URL", "http://127.0.0.1:8000")
 
 # -----------------------------------------------------------------------------
-# CATEGORY DEFINITIONS & VERIFIED SAMPLES
+# CATEGORY DEFINITIONS & VERIFIED QUICK DEMO SAMPLES
 # -----------------------------------------------------------------------------
 CATEGORIES = {
     "bottle": {
         "name": "Bottle",
         "tag": "Rigid Glass Container",
-        "focus": "Surface cracks • contamination • structural anomalies",
+        "focus": "Surface cracks • chipping • contamination",
         "icon": "🍾",
         "samples": [
-            ("Normal (Good Sample)", "dataset/mvtec_anomaly_detection/bottle/test/good/001.png"),
+            ("Normal (Golden Baseline)", "dataset/mvtec_anomaly_detection/bottle/test/good/001.png"),
             ("Defect: Broken Large Crack", "dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png"),
             ("Defect: Broken Small Chipping", "dataset/mvtec_anomaly_detection/bottle/test/broken_small/000.png"),
             ("Defect: Foreign Contamination", "dataset/mvtec_anomaly_detection/bottle/test/contamination/000.png"),
@@ -55,7 +56,7 @@ CATEGORIES = {
         "focus": "Cuts • holes • color patches • fold marks",
         "icon": "🧤",
         "samples": [
-            ("Normal (Good Sample)", "dataset/mvtec_anomaly_detection/leather/test/good/001.png"),
+            ("Normal (Golden Baseline)", "dataset/mvtec_anomaly_detection/leather/test/good/001.png"),
             ("Defect: Surface Cut", "dataset/mvtec_anomaly_detection/leather/test/cut/000.png"),
             ("Defect: Deep Fold", "dataset/mvtec_anomaly_detection/leather/test/fold/000.png"),
             ("Defect: Color Flaw", "dataset/mvtec_anomaly_detection/leather/test/color/000.png"),
@@ -63,23 +64,24 @@ CATEGORIES = {
     },
     "transistor": {
         "name": "Transistor",
-        "tag": "Electronic Semiconductor",
-        "focus": "Bent leads • cut leads • damaged casing • misplacement",
+        "tag": "Semiconductor IC",
+        "focus": "Bent leads • cut leads • damaged casing • missing body",
         "icon": "⚡",
         "samples": [
-            ("Normal (Good Sample)", "dataset/mvtec_anomaly_detection/transistor/test/good/001.png"),
+            ("Normal (Golden Baseline)", "dataset/mvtec_anomaly_detection/transistor/test/good/001.png"),
             ("Defect: Bent Lead Pin", "dataset/mvtec_anomaly_detection/transistor/test/bent_lead/000.png"),
             ("Defect: Cut Lead Pin", "dataset/mvtec_anomaly_detection/transistor/test/cut_lead/000.png"),
             ("Defect: Damaged Casing", "dataset/mvtec_anomaly_detection/transistor/test/damaged_case/000.png"),
+            ("Defect: Missing Component", "dataset/mvtec_anomaly_detection/transistor/test/misplaced/002.png"),
         ]
     },
     "zipper": {
         "name": "Zipper",
-        "tag": "Mechanical Closure Fastener",
+        "tag": "Mechanical Closure Chain",
         "focus": "Broken teeth • split teeth • fabric roughness",
         "icon": "🤐",
         "samples": [
-            ("Normal (Good Sample)", "dataset/mvtec_anomaly_detection/zipper/test/good/001.png"),
+            ("Normal (Golden Baseline)", "dataset/mvtec_anomaly_detection/zipper/test/good/001.png"),
             ("Defect: Broken Teeth", "dataset/mvtec_anomaly_detection/zipper/test/broken_teeth/000.png"),
             ("Defect: Split Teeth Gap", "dataset/mvtec_anomaly_detection/zipper/test/split_teeth/000.png"),
             ("Defect: Fabric Roughness", "dataset/mvtec_anomaly_detection/zipper/test/rough/000.png"),
@@ -87,11 +89,11 @@ CATEGORIES = {
     },
     "screw": {
         "name": "Screw",
-        "tag": "Threaded Metal Fastener",
+        "tag": "Threaded Fastener",
         "focus": "Thread damage • scratch head • metal deformation",
         "icon": "🔩",
         "samples": [
-            ("Normal (Good Sample)", "dataset/mvtec_anomaly_detection/screw/test/good/001.png"),
+            ("Normal (Golden Baseline)", "dataset/mvtec_anomaly_detection/screw/test/good/001.png"),
             ("Defect: Head Scratch", "dataset/mvtec_anomaly_detection/screw/test/scratch_head/000.png"),
             ("Defect: Thread Side Damage", "dataset/mvtec_anomaly_detection/screw/test/thread_side/000.png"),
             ("Defect: Manipulated Front", "dataset/mvtec_anomaly_detection/screw/test/manipulated_front/000.png"),
@@ -130,15 +132,19 @@ def purge_inspection(new_category: Optional[str] = None):
     if new_category:
         st.session_state["selected_category"] = new_category
 
+# Dedicated zero-indentation HTML renderer to prevent CommonMark code block leaks
+def render_html(content: str):
+    st.markdown(textwrap.dedent(content).strip(), unsafe_allow_html=True)
+
 # -----------------------------------------------------------------------------
 # PREMIUM INDUSTRIAL STYLING (NAVY / TEAL / SKY BLUE / BEIGE / WHITE)
 # -----------------------------------------------------------------------------
-st.markdown("""
+render_html("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         color: #2F4156;
     }
     .stApp {
@@ -146,16 +152,16 @@ st.markdown("""
     }
 
     /* Top Navigation Header */
-    .top-header {
+    .top-header-box {
         background: #FFFFFF;
-        border-radius: 14px;
+        border-radius: 12px;
         padding: 0.85rem 1.6rem;
         box-shadow: 0 2px 10px rgba(47, 65, 86, 0.05);
         border: 1px solid #E2E8F0;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.2rem;
+        margin-bottom: 1.0rem;
     }
     .brand-title {
         font-size: 1.35rem;
@@ -167,13 +173,13 @@ st.markdown("""
         gap: 8px;
     }
     .brand-sub {
-        font-size: 0.76rem;
+        font-size: 0.74rem;
         color: #567C8D;
         font-weight: 600;
         letter-spacing: 0.5px;
         text-transform: uppercase;
     }
-    .status-pill {
+    .status-pill-online {
         background: #DCFCE7;
         color: #15803D;
         font-weight: 700;
@@ -184,37 +190,6 @@ st.markdown("""
         display: inline-flex;
         align-items: center;
         gap: 6px;
-    }
-
-    /* Compact Category Cards */
-    .cat-card {
-        background: #FFFFFF;
-        border: 2px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 0.85rem 0.6rem;
-        text-align: center;
-        transition: all 0.2s ease;
-        height: 100%;
-    }
-    .cat-card.active {
-        border-color: #567C8D;
-        background: #F0F7FB;
-        box-shadow: 0 4px 12px rgba(86, 124, 141, 0.15);
-    }
-    .cat-icon {
-        font-size: 1.6rem;
-        margin-bottom: 4px;
-    }
-    .cat-title {
-        font-weight: 700;
-        font-size: 0.92rem;
-        color: #2F4156;
-    }
-    .cat-tag {
-        font-size: 0.70rem;
-        color: #567C8D;
-        margin-top: 2px;
-        font-weight: 500;
     }
 
     /* Step Banner */
@@ -230,7 +205,7 @@ st.markdown("""
     }
     .step-title {
         font-weight: 800;
-        font-size: 1.05rem;
+        font-size: 1.02rem;
         color: #2F4156;
         display: flex;
         align-items: center;
@@ -241,7 +216,7 @@ st.markdown("""
     .scan-container {
         position: relative;
         width: 100%;
-        max-width: 480px;
+        max-width: 440px;
         margin: 0 auto;
         border-radius: 10px;
         overflow: hidden;
@@ -251,8 +226,8 @@ st.markdown("""
     }
     .scan-bracket {
         position: absolute;
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
         border-color: #38BDF8;
         border-style: solid;
         z-index: 10;
@@ -266,9 +241,9 @@ st.markdown("""
         position: absolute;
         left: 0;
         width: 100%;
-        height: 2.5px;
+        height: 3px;
         background: #EF4444;
-        box-shadow: 0 0 14px #EF4444, 0 0 4px #FCA5A5;
+        box-shadow: 0 0 16px #EF4444, 0 0 4px #FCA5A5;
         z-index: 8;
         animation: laserSweep 1.8s ease-in-out infinite alternate;
     }
@@ -283,7 +258,7 @@ st.markdown("""
         background: #F0FDF4;
         border: 1.5px solid #86EFAC;
         border-radius: 12px;
-        padding: 1.0rem 1.4rem;
+        padding: 0.9rem 1.4rem;
         display: flex;
         align-items: center;
         gap: 14px;
@@ -293,7 +268,7 @@ st.markdown("""
         background: #FEF2F2;
         border: 1.5px solid #FCA5A5;
         border-radius: 12px;
-        padding: 1.0rem 1.4rem;
+        padding: 0.9rem 1.4rem;
         display: flex;
         align-items: center;
         gap: 14px;
@@ -308,6 +283,7 @@ st.markdown("""
         justify-content: center;
         font-size: 1.5rem;
         font-weight: 800;
+        flex-shrink: 0;
     }
 
     /* Metric Cards */
@@ -340,6 +316,14 @@ st.markdown("""
     }
 
     /* Visual Inspection Panels */
+    .vis-panel-box {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(47, 65, 86, 0.04);
+        height: 100%;
+    }
     .vis-panel-header {
         background: #2F4156;
         color: #FFFFFF;
@@ -347,9 +331,11 @@ st.markdown("""
         font-weight: 700;
         letter-spacing: 0.5px;
         text-align: center;
-        padding: 6px 10px;
-        border-radius: 8px 8px 0 0;
+        padding: 8px 10px;
         text-transform: uppercase;
+    }
+    .vis-panel-content {
+        padding: 10px;
     }
 
     /* Heatmap Legend Bar */
@@ -398,23 +384,22 @@ st.markdown("""
         color: #334155;
     }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # -----------------------------------------------------------------------------
 # TOP HEADER & NAVIGATION
 # -----------------------------------------------------------------------------
-header_col1, header_col2, header_col3 = st.columns([2.2, 3.2, 1.2])
+header_col1, header_col2, header_col3 = st.columns([2.2, 3.0, 1.3])
 
 with header_col1:
-    st.markdown("""
+    render_html("""
     <div style="padding: 4px 0;">
         <div class="brand-title">🔬 VISIONINSPECT</div>
-        <div class="brand-sub">Autonomous Defect Detection & Localization</div>
+        <div class="brand-sub">Unsupervised Industrial Optical Inspection</div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 with header_col2:
-    # Clean top navigation pills
     pages = ["Inspect", "Home", "Analytics", "Model"]
     nav_cols = st.columns(len(pages))
     for idx, p in enumerate(pages):
@@ -426,79 +411,78 @@ with header_col2:
                 st.rerun()
 
 with header_col3:
-    st.markdown("""
+    render_html("""
     <div style="text-align: right; padding-top: 10px;">
-        <span class="status-pill">● Service Online</span>
+        <span class="status-pill-online">● Fast-Engine Online</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
-st.markdown("<hr style='margin: 0.4rem 0 1.2rem 0; border-color: #E2E8F0;' />", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 0.4rem 0 1.0rem 0; border-color: #E2E8F0;' />", unsafe_allow_html=True)
 
 # =============================================================================
-# PAGE 1: HOME PAGE
+# PAGE 1: HOME PAGE (OVERVIEW)
 # =============================================================================
 if st.session_state["nav_page"] == "Home":
-    st.markdown("""
+    render_html("""
     <div style="background: linear-gradient(135deg, #EFF6FB 0%, #FFFFFF 100%); border: 1px solid #C8D9E6; border-radius: 14px; padding: 2.2rem; margin-bottom: 1.5rem;">
-        <div style="font-size: 0.85rem; font-weight: 800; color: #567C8D; text-transform: uppercase; letter-spacing: 1px;">Industrial Computer Vision</div>
-        <div style="font-size: 2.3rem; font-weight: 800; color: #2F4156; margin: 4px 0 8px 0;">Intelligent Visual Inspection.</div>
-        <div style="font-size: 1.05rem; color: #475569; max-width: 650px; line-height: 1.5; margin-bottom: 1.4rem;">
-            Detect, score, and localize manufacturing anomalies using unsupervised deep learning memory banks. Calibrated with zero defective training samples.
+        <div style="font-size: 0.85rem; font-weight: 800; color: #567C8D; text-transform: uppercase; letter-spacing: 1px;">Autonomous Manufacturing QC</div>
+        <div style="font-size: 2.2rem; font-weight: 800; color: #2F4156; margin: 4px 0 8px 0;">Precision Optical Defect Localization.</div>
+        <div style="font-size: 1.02rem; color: #475569; max-width: 680px; line-height: 1.5; margin-bottom: 1.4rem;">
+            Detect, score, and pinpoint structural anomalies on industrial components using multi-scale patch embeddings and coreset memory banks. Trained strictly on normal reference images with zero defect leakage.
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
-    if st.button("START INSPECTION →", type="primary"):
+    if st.button("LAUNCH INSPECTION STATION →", type="primary"):
         st.session_state["nav_page"] = "Inspect"
         st.rerun()
 
-    st.markdown("### Supported Manufacturing Categories")
+    st.markdown("### Supported Product Categories")
     c_cols = st.columns(5)
     for idx, (cat_key, cat_data) in enumerate(CATEGORIES.items()):
         with c_cols[idx]:
-            st.markdown(f"""
-            <div class="cat-card">
-                <div class="cat-icon">{cat_data['icon']}</div>
-                <div class="cat-title">{cat_data['name']}</div>
-                <div class="cat-tag">{cat_data['tag']}</div>
+            render_html(f"""
+            <div class="metric-card" style="text-align:center;">
+                <div style="font-size: 2.0rem; margin-bottom: 4px;">{cat_data['icon']}</div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: #2F4156;">{cat_data['name']}</div>
+                <div style="font-size: 0.72rem; color: #567C8D; margin: 2px 0;">{cat_data['tag']}</div>
                 <div style="font-size: 0.68rem; color: #94A3B8; margin-top: 6px;">{cat_data['focus']}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
-    st.markdown("---")
+    st.markdown("<hr style='margin: 1.4rem 0; border-color: #E2E8F0;' />", unsafe_allow_html=True)
     st.markdown("### Simple 4-Step Inspection Workflow")
     w1, w2, w3, w4 = st.columns(4)
     with w1:
-        st.markdown("**1. UPLOAD**<br><span style='font-size:0.8rem; color:#567C8D;'>Select category and load product image or quick sample.</span>", unsafe_allow_html=True)
+        st.markdown("**1. SELECT CATEGORY**<br><span style='font-size:0.8rem; color:#567C8D;'>Pick from 5 specialized manufacturing models.</span>", unsafe_allow_html=True)
     with w2:
-        st.markdown("**2. ANALYZE**<br><span style='font-size:0.8rem; color:#567C8D;'>PatchCore extracts multi-scale ResNet18 features.</span>", unsafe_allow_html=True)
+        st.markdown("**2. LOAD IMAGE**<br><span style='font-size:0.8rem; color:#567C8D;'>Choose a verified quick sample or drag-and-drop.</span>", unsafe_allow_html=True)
     with w3:
-        st.markdown("**3. LOCALIZE**<br><span style='font-size:0.8rem; color:#567C8D;'>Nearest-neighbor memory bank matches anomaly regions.</span>", unsafe_allow_html=True)
+        st.markdown("**3. OPTICAL SCAN**<br><span style='font-size:0.8rem; color:#567C8D;'>ResNet18 layers 1-3 extract 448D spatial patch features.</span>", unsafe_allow_html=True)
     with w4:
-        st.markdown("**4. INSPECT**<br><span style='font-size:0.8rem; color:#567C8D;'>Instant dual-gated Pass/Fail decision with bounding boxes.</span>", unsafe_allow_html=True)
+        st.markdown("**4. VERIFY REPORT**<br><span style='font-size:0.8rem; color:#567C8D;'>3-panel visual report with heatmap and bounding boxes.</span>", unsafe_allow_html=True)
 
 
 # =============================================================================
-# PAGE 2: MAIN INSPECTION PAGE
+# PAGE 2: MAIN INSPECTION STATION
 # =============================================================================
 elif st.session_state["nav_page"] == "Inspect":
     active_cat = st.session_state["selected_category"]
 
     # -------------------------------------------------------------------------
-    # STEP 01: PRODUCT CATEGORY SELECTION (COMPACT ROW)
+    # STEP 01: PRODUCT CATEGORY SELECTION
     # -------------------------------------------------------------------------
-    st.markdown("""
+    render_html("""
     <div class="step-title">
         <span class="step-badge">STEP 01</span>
         <span>Select Product Category</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     cat_cols = st.columns(5)
     for idx, (cat_key, cat_data) in enumerate(CATEGORIES.items()):
         with cat_cols[idx]:
             is_active = (active_cat == cat_key)
-            card_class = "cat-card active" if is_active else "cat-card"
             check_mark = "✔ " if is_active else ""
             if st.button(
                 f"{cat_data['icon']} {check_mark}{cat_data['name']}",
@@ -510,21 +494,20 @@ elif st.session_state["nav_page"] == "Inspect":
                     purge_inspection(new_category=cat_key)
                     st.rerun()
 
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # MAIN WORKFLOW COLUMNS (LEFT: INPUT / RIGHT: SCANNER & RESULT)
+    # STEP 02 & STEP 03: IMAGE INPUT & SCANNER ACTION (COMPACT 2-COLUMN)
     # -------------------------------------------------------------------------
-    col_input, col_result = st.columns([1.15, 1.85], gap="large")
+    input_box_col1, input_box_col2 = st.columns([1.1, 1.0], gap="medium")
 
-    # LEFT COLUMN: STEP 02 & STEP 03
-    with col_input:
-        st.markdown("""
+    with input_box_col1:
+        render_html("""
         <div class="step-title">
             <span class="step-badge">STEP 02</span>
             <span>Inspection Image</span>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
         # Quick Demo Samples Dropdown
         samples_list = CATEGORIES[active_cat]["samples"]
@@ -546,7 +529,6 @@ elif st.session_state["nav_page"] == "Inspect":
                 with open(match_path, "rb") as f:
                     s_bytes = f.read()
                 pil_im = Image.open(io.BytesIO(s_bytes))
-                # Only update if different
                 cur_data = st.session_state["uploaded_image_data"]
                 if not cur_data or cur_data[0] != Path(match_path).name:
                     st.session_state["uploaded_image_data"] = (Path(match_path).name, s_bytes, pil_im.size)
@@ -555,7 +537,7 @@ elif st.session_state["nav_page"] == "Inspect":
 
         # Drag & Drop File Uploader
         uploaded_file = st.file_uploader(
-            "Or drag and drop your image:",
+            "Or drag and drop your component image:",
             type=["png", "jpg", "jpeg", "webp"],
             key="user_file_uploader",
             label_visibility="visible"
@@ -570,312 +552,323 @@ elif st.session_state["nav_page"] == "Inspect":
                 st.session_state["current_inspection"] = None
                 st.session_state["current_request_id"] = None
 
-        # Image Preview & Metadata
+    with input_box_col2:
+        render_html("""
+        <div class="step-title">
+            <span class="step-badge">STEP 03</span>
+            <span>Inspection Trigger & Status</span>
+        </div>
+        """)
+
         if st.session_state["uploaded_image_data"]:
             fname, img_b, (iw, ih) = st.session_state["uploaded_image_data"]
-            st.markdown(f"""
-            <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; padding:0.6rem 0.8rem; margin: 8px 0; font-size:0.75rem; color:#567C8D; display:flex; justify-content:space-between;">
-                <span><b>File:</b> {fname}</span>
+            render_html(f"""
+            <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:10px; font-size:0.75rem; color:#567C8D; display:flex; justify-content:space-between;">
+                <span><b>Selected:</b> <code>{fname}</code></span>
                 <span><b>Dimensions:</b> {iw}×{ih} px</span>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
-            # STEP 03: RUN AI INSPECTION BUTTON
-            st.markdown("""
-            <div class="step-title" style="margin-top: 12px;">
-                <span class="step-badge">STEP 03</span>
-                <span>Execute Inspection</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            if st.button("🚀 RUN AI INSPECTION", type="primary", use_container_width=True):
+            if st.button("🚀 RUN AI OPTICAL INSPECTION", type="primary", use_container_width=True):
                 st.session_state["is_scanning"] = True
                 st.rerun()
 
+            if st.session_state["current_inspection"] is None and not st.session_state["is_scanning"]:
+                render_html("""
+                <div style="background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; padding:0.65rem 0.9rem; font-size:0.75rem; color:#166534; margin-top:8px;">
+                    ✔ Image loaded into memory. Click <b>RUN AI OPTICAL INSPECTION</b> above to analyze.
+                </div>
+                """)
         else:
-            st.info(f"Select a quick demo sample or drag-and-drop a {CATEGORIES[active_cat]['name']} image above.")
-
-    # RIGHT COLUMN: SCANNING ANIMATION OR INSPECTION REPORT
-    with col_result:
-        # Check if scanning in progress
-        if st.session_state["is_scanning"]:
-            st.markdown("""
-            <div class="step-title">
-                <span class="step-badge">SCANNING</span>
-                <span>AI Optical Inspection In Progress</span>
+            render_html(f"""
+            <div style="background:#FFFFFF; border:2px dashed #CBD5E1; border-radius:10px; padding:1.8rem 1.2rem; text-align:center; color:#94A3B8;">
+                <div style="font-size:1.8rem; margin-bottom:4px;">📥</div>
+                <div style="font-weight:700; font-size:0.85rem; color:#475569;">No Image Selected</div>
+                <div style="font-size:0.75rem; margin-top:2px;">Select a verified quick sample on the left or drop an image file.</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
-            _, scan_b, _ = st.session_state["uploaded_image_data"]
-            b64_img = base64.b64encode(scan_b).decode("utf-8")
+    # -------------------------------------------------------------------------
+    # LASER SCANNER ANIMATION SIMULATION (DURING INFERENCE)
+    # -------------------------------------------------------------------------
+    if st.session_state["is_scanning"]:
+        st.markdown("<hr style='margin: 1.0rem 0; border-color: #E2E8F0;' />", unsafe_allow_html=True)
+        render_html("""
+        <div class="step-title" style="justify-content:center;">
+            <span class="step-badge" style="background:#EF4444;">ACQUIRING</span>
+            <span>Optical Laser Scanning & Feature Comparison in Progress...</span>
+        </div>
+        """)
 
-            st.markdown(f"""
-            <div class="scan-container">
-                <div class="scan-bracket scan-bracket-tl"></div>
-                <div class="scan-bracket scan-bracket-tr"></div>
-                <div class="scan-bracket scan-bracket-bl"></div>
-                <div class="scan-bracket scan-bracket-br"></div>
-                <div class="scan-laser"></div>
-                <img src="data:image/png;base64,{b64_img}" style="width:100%; display:block; filter: brightness(0.9);" />
+        _, scan_b, _ = st.session_state["uploaded_image_data"]
+        b64_img = base64.b64encode(scan_b).decode("utf-8")
+
+        render_html(f"""
+        <div class="scan-container">
+            <div class="scan-bracket scan-bracket-tl"></div>
+            <div class="scan-bracket scan-bracket-tr"></div>
+            <div class="scan-bracket scan-bracket-bl"></div>
+            <div class="scan-bracket scan-bracket-br"></div>
+            <div class="scan-laser"></div>
+            <img src="data:image/png;base64,{b64_img}" style="width:100%; display:block; filter: brightness(0.88);" />
+        </div>
+        <div style="text-align:center; padding: 10px 0 6px 0;">
+            <div style="font-weight: 800; font-size: 0.95rem; color: #2F4156;">EXTRACTING MULTI-SCALE PATCH EMBEDDINGS (448D)</div>
+            <div style="font-size: 0.76rem; color: #567C8D; margin-top: 3px;">
+                Comparing 64×64 feature grid with nominal {CATEGORIES[active_cat]['name']} memory bank...
             </div>
-            <div style="text-align:center; padding: 12px 0 6px 0;">
-                <div style="font-weight: 800; font-size: 0.96rem; color: #2F4156;">SCANNING PRODUCT SURFACE...</div>
-                <div style="font-size: 0.78rem; color: #567C8D; margin-top: 3px;">
-                    Extracting multi-scale patch features & comparing with {CATEGORIES[active_cat]['name']} memory bank...
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """)
 
-            # Run Backend Inference
-            try:
-                fname, raw_b, _ = st.session_state["uploaded_image_data"]
-                res = requests.post(
-                    f"{st.session_state['backend_url']}/predict",
-                    data={"category": active_cat, "return_visualizations": "true"},
-                    files={"file": (fname, raw_b, "image/png")},
-                    timeout=25
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    st.session_state["current_inspection"] = data
-                    st.session_state["current_request_id"] = data.get("request_id")
-                    # Log to history
-                    hist_entry = {
-                        "id": len(st.session_state["recent_inspections"]) + 1,
-                        "filename": fname,
-                        "category": active_cat,
-                        "status": data.get("status", "NORMAL"),
-                        "score": data.get("anomaly_score", 0.0),
-                        "threshold": data.get("image_threshold", 0.0),
-                        "regions": data.get("num_defects", 0),
-                        "time_s": data.get("inference_time_s", 1.5)
-                    }
-                    st.session_state["recent_inspections"].insert(0, hist_entry)
-                else:
-                    st.error(f"Backend returned error {res.status_code}: {res.text}")
-            except Exception as e:
-                st.error(f"Failed to communicate with FastAPI backend: {e}")
-            finally:
-                st.session_state["is_scanning"] = False
-                st.rerun()
-
-        # Render Inspection Results if available
-        elif st.session_state["current_inspection"] is not None:
-            res = st.session_state["current_inspection"]
-            is_defective = res.get("is_defective", False)
-            status = res.get("status", "NORMAL")
-            score = res.get("anomaly_score", 0.0)
-            th = res.get("image_threshold", 0.0)
-            margin = res.get("decision_margin", score - th)
-            n_defects = res.get("num_defects", 0)
-            latency_s = res.get("inference_time_s", 2.0)
-            cat_tag = CATEGORIES[active_cat]["tag"]
-            cat_focus = CATEGORIES[active_cat]["focus"]
-
-            # Category Banner
-            st.markdown(f"""
-            <div style="background:#2F4156; color:#FFFFFF; border-radius:10px; padding:0.6rem 1.0rem; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <span style="font-weight:800; font-size:0.95rem; text-transform:uppercase;">{active_cat} INSPECTION</span>
-                    <span style="font-size:0.75rem; color:#C8D9E6; margin-left:8px;">PatchCore v2.3</span>
-                </div>
-                <div style="font-size:0.72rem; color:#C8D9E6;">
-                    Focus: {cat_focus}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Status Banner
-            if is_defective:
-                st.markdown(f"""
-                <div class="status-banner-defective">
-                    <div class="status-icon-badge" style="background:#FEE2E2; color:#B91C1C;">!</div>
-                    <div>
-                        <div style="font-size: 1.15rem; font-weight: 800; color: #991B1B;">DEFECTIVE — INSPECTION FAILED</div>
-                        <div style="font-size: 0.82rem; color: #7F1D1D; margin-top: 2px;">
-                            Anomaly regions were detected and localized. Component rejected.
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            elif score > th and n_defects == 0:
-                st.markdown(f"""
-                <div class="status-banner-normal" style="border-color:#FDE68A; background:#FFFBEB;">
-                    <div class="status-icon-badge" style="background:#FEF3C7; color:#B45309;">⚡</div>
-                    <div>
-                        <div style="font-size: 1.15rem; font-weight: 800; color: #92400E;">ELEVATED SIGNAL — ACCEPTED AS NORMAL</div>
-                        <div style="font-size: 0.82rem; color: #78350F; margin-top: 2px;">
-                            Raw anomaly score exceeded threshold, but no region passed the defect size criteria. Inspection Passed.
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+        try:
+            fname, raw_b, _ = st.session_state["uploaded_image_data"]
+            res = requests.post(
+                f"{st.session_state['backend_url']}/predict",
+                data={"category": active_cat, "return_visualizations": "true"},
+                files={"file": (fname, raw_b, "image/png")},
+                timeout=25
+            )
+            if res.status_code == 200:
+                data = res.json()
+                st.session_state["current_inspection"] = data
+                st.session_state["current_request_id"] = data.get("request_id")
+                hist_entry = {
+                    "id": len(st.session_state["recent_inspections"]) + 1,
+                    "filename": fname,
+                    "category": active_cat,
+                    "status": data.get("status", "NORMAL"),
+                    "score": data.get("anomaly_score", 0.0),
+                    "threshold": data.get("image_threshold", 0.0),
+                    "regions": data.get("num_defects", 0),
+                    "time_s": data.get("inference_time_s", 1.5)
+                }
+                st.session_state["recent_inspections"].insert(0, hist_entry)
             else:
-                st.markdown(f"""
-                <div class="status-banner-normal">
-                    <div class="status-icon-badge" style="background:#DCFCE7; color:#15803D;">✓</div>
-                    <div>
-                        <div style="font-size: 1.15rem; font-weight: 800; color: #166534;">NORMAL — INSPECTION PASSED</div>
-                        <div style="font-size: 0.82rem; color: #14532D; margin-top: 2px;">
-                            No confirmed defect region was identified. Component approved.
-                        </div>
+                st.error(f"Backend returned error {res.status_code}: {res.text}")
+        except Exception as e:
+            st.error(f"Communication error with FastAPI backend: {e}")
+        finally:
+            st.session_state["is_scanning"] = False
+            st.rerun()
+
+    # -------------------------------------------------------------------------
+    # STEP 04: FULL-WIDTH OPTICAL INSPECTION REPORT
+    # -------------------------------------------------------------------------
+    elif st.session_state["current_inspection"] is not None:
+        st.markdown("<hr style='margin: 1.2rem 0; border-color: #CBD5E1;' />", unsafe_allow_html=True)
+        res = st.session_state["current_inspection"]
+        is_defective = res.get("is_defective", False)
+        status = res.get("status", "NORMAL")
+        score = res.get("anomaly_score", 0.0)
+        th = res.get("image_threshold", 0.0)
+        margin = res.get("decision_margin", score - th)
+        n_defects = res.get("num_defects", 0)
+        latency_s = res.get("inference_time_s", 2.0)
+        cat_tag = CATEGORIES[active_cat]["tag"]
+        cat_focus = CATEGORIES[active_cat]["focus"]
+
+        # Category Header Banner
+        render_html(f"""
+        <div style="background:#2F4156; color:#FFFFFF; border-radius:10px; padding:0.65rem 1.2rem; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <span style="font-weight:800; font-size:1.0rem; text-transform:uppercase;">{active_cat} OPTICAL INSPECTION REPORT</span>
+                <span style="font-size:0.75rem; color:#C8D9E6; margin-left:8px;">Model: PatchCore v2.3</span>
+            </div>
+            <div style="font-size:0.74rem; color:#C8D9E6;">
+                <b>Focus:</b> {cat_focus}
+            </div>
+        </div>
+        """)
+
+        # Status Banner
+        if is_defective:
+            render_html(f"""
+            <div class="status-banner-defective">
+                <div class="status-icon-badge" style="background:#FEE2E2; color:#B91C1C;">✕</div>
+                <div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #991B1B;">DEFECTIVE — COMPONENT REJECTED</div>
+                    <div style="font-size: 0.82rem; color: #7F1D1D; margin-top: 2px;">
+                        Confirmed anomaly region(s) identified. Component deviates from nominal manufacturing standards.
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
-
-            # 5 Key Metric Cards (Row)
-            m1, m2, m3, m4, m5 = st.columns(5)
-            with m1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Anomaly Score</div>
-                    <div class="metric-val">{score:.4f}</div>
-                    <div class="metric-sub">Feature deviation</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with m2:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Decision Threshold</div>
-                    <div class="metric-val">{th:.4f}</div>
-                    <div class="metric-sub">Calibrated bound</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with m3:
-                margin_col = "#B91C1C" if margin > 0 else "#15803D"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Decision Margin</div>
-                    <div class="metric-val" style="color:{margin_col};">{margin:+.4f}</div>
-                    <div class="metric-sub">Score - Threshold</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with m4:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Regions</div>
-                    <div class="metric-val">{n_defects}</div>
-                    <div class="metric-sub">{"Clusters found" if n_defects > 0 else "None"}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with m5:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-title">Inference Time</div>
-                    <div class="metric-val">{latency_s:.2f}s</div>
-                    <div class="metric-sub">End-to-end latency</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-
-            # -----------------------------------------------------------------
-            # THREE-PANEL VISUAL INSPECTION
-            # -----------------------------------------------------------------
-            st.markdown("""
-            <div style="font-size: 0.88rem; font-weight: 800; color: #2F4156; text-transform: uppercase; margin-bottom: 6px;">
-                🔍 VISUAL INSPECTION
             </div>
-            """, unsafe_allow_html=True)
+            """)
+        elif score > th and n_defects == 0:
+            render_html(f"""
+            <div class="status-banner-normal" style="border-color:#FDE68A; background:#FFFBEB;">
+                <div class="status-icon-badge" style="background:#FEF3C7; color:#B45309;">⚡</div>
+                <div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #92400E;">ELEVATED SIGNAL — ACCEPTED AS NORMAL</div>
+                    <div style="font-size: 0.82rem; color: #78350F; margin-top: 2px;">
+                        Raw anomaly score exceeded threshold, but no region passed the connected-component defect area criteria. Component Approved.
+                    </div>
+                </div>
+            </div>
+            """)
+        else:
+            render_html(f"""
+            <div class="status-banner-normal">
+                <div class="status-icon-badge" style="background:#DCFCE7; color:#15803D;">✓</div>
+                <div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #166534;">NORMAL — INSPECTION PASSED</div>
+                    <div style="font-size: 0.82rem; color: #14532D; margin-top: 2px;">
+                        Zero anomaly regions identified. Component conforms to calibrated acceptance criteria.
+                    </div>
+                </div>
+            </div>
+            """)
 
-            v_col1, v_col2, v_col3 = st.columns(3)
+        # 5 Key Metric Cards (Full Width Row)
+        m1, m2, m3, m4, m5 = st.columns(5)
+        with m1:
+            render_html(f"""
+            <div class="metric-card">
+                <div class="metric-title">Anomaly Score</div>
+                <div class="metric-val">{score:.4f}</div>
+                <div class="metric-sub">Patch distance</div>
+            </div>
+            """)
+        with m2:
+            render_html(f"""
+            <div class="metric-card">
+                <div class="metric-title">Decision Threshold</div>
+                <div class="metric-val">{th:.4f}</div>
+                <div class="metric-sub">Calibrated bound (T_img)</div>
+            </div>
+            """)
+        with m3:
+            margin_col = "#B91C1C" if margin > 0 else "#15803D"
+            render_html(f"""
+            <div class="metric-card">
+                <div class="metric-title">Decision Margin</div>
+                <div class="metric-val" style="color:{margin_col};">{margin:+.4f}</div>
+                <div class="metric-sub">Score - Threshold</div>
+            </div>
+            """)
+        with m4:
+            render_html(f"""
+            <div class="metric-card">
+                <div class="metric-title">Defect Regions</div>
+                <div class="metric-val">{n_defects}</div>
+                <div class="metric-sub">{"Clusters detected" if n_defects > 0 else "None identified"}</div>
+            </div>
+            """)
+        with m5:
+            render_html(f"""
+            <div class="metric-card">
+                <div class="metric-title">Inference Latency</div>
+                <div class="metric-val">{latency_s:.2f}s</div>
+                <div class="metric-sub">End-to-end time</div>
+            </div>
+            """)
 
-            # Panel 1: Original Image
-            with v_col1:
-                st.markdown("<div class='vis-panel-header'>1. Original Image</div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+        # ---------------------------------------------------------------------
+        # THREE-PANEL VISUAL INSPECTION SUITE (LARGE SIDE-BY-SIDE PANELS)
+        # ---------------------------------------------------------------------
+        render_html("""
+        <div style="font-size: 0.90rem; font-weight: 800; color: #2F4156; text-transform: uppercase; margin-bottom: 8px;">
+            🔍 VISUAL INSPECTION SUITE (FULL-FRAME COMPARISON)
+        </div>
+        """)
+
+        v_col1, v_col2, v_col3 = st.columns(3, gap="medium")
+
+        # Panel 1: Original Image
+        with v_col1:
+            render_html("""
+            <div class="vis-panel-header">1. Pristine Original Image</div>
+            """)
+            if st.session_state["uploaded_image_data"]:
+                _, o_bytes, _ = st.session_state["uploaded_image_data"]
+                st.image(Image.open(io.BytesIO(o_bytes)), use_container_width=True)
+            st.caption("Pristine uploaded product image under inspection")
+
+        # Panel 2: Calibrated Anomaly Heatmap
+        with v_col2:
+            render_html("""
+            <div class="vis-panel-header">2. Calibrated Anomaly Heatmap</div>
+            """)
+            hm_b64 = res.get("heatmap_base64")
+            if hm_b64:
+                st.image(Image.open(io.BytesIO(base64.b64decode(hm_b64))), use_container_width=True)
+                render_html("""
+                <div class="heatmap-legend">
+                    <div class="legend-bar"></div>
+                    <div class="legend-labels">
+                        <span>Low (Nominal)</span>
+                        <span>Moderate</span>
+                        <span>High (Anomaly)</span>
+                    </div>
+                </div>
+                """)
+            else:
+                st.info("Heatmap visualization unavailable.")
+
+        # Panel 3: Defect Localization Overlay
+        with v_col3:
+            render_html("""
+            <div class="vis-panel-header">3. Defect Localization & Bounding</div>
+            """)
+            vis_b64 = res.get("visualization_base64")
+            if is_defective and vis_b64:
+                st.image(Image.open(io.BytesIO(base64.b64decode(vis_b64))), use_container_width=True)
+                st.caption(f"Overlay with {n_defects} confirmed bounding box(es)")
+            else:
                 if st.session_state["uploaded_image_data"]:
                     _, o_bytes, _ = st.session_state["uploaded_image_data"]
                     st.image(Image.open(io.BytesIO(o_bytes)), use_container_width=True)
-                st.caption("Pristine uploaded product image")
+                st.caption("✔ Clean Component — Zero defect regions identified")
 
-            # Panel 2: Anomaly Heatmap
-            with v_col2:
-                st.markdown("<div class='vis-panel-header'>2. Anomaly Heatmap</div>", unsafe_allow_html=True)
-                hm_b64 = res.get("heatmap_base64")
-                if hm_b64:
-                    st.image(Image.open(io.BytesIO(base64.b64decode(hm_b64))), use_container_width=True)
-                    st.markdown("""
-                    <div class="heatmap-legend">
-                        <div class="legend-bar"></div>
-                        <div class="legend-labels">
-                            <span>Low (Nominal)</span>
-                            <span>Medium</span>
-                            <span>High (Anomaly)</span>
-                        </div>
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+        # Detected Anomalies Cards (if defective)
+        if is_defective and res.get("localized_regions"):
+            render_html("""
+            <div style="font-size: 0.82rem; font-weight: 700; color: #2F4156; margin-bottom: 4px;">
+                LOCALIZED ANOMALY REGIONS
+            </div>
+            """)
+            regs = res.get("localized_regions", [])
+            reg_cols = st.columns(min(4, len(regs)))
+            for r_idx, reg in enumerate(regs[:4]):
+                with reg_cols[r_idx]:
+                    lbl = reg.get("label", f"Region {r_idx+1:02d}")
+                    intensity = reg.get("intensity", "Anomaly Region")
+                    area_px = reg.get("area", 0)
+                    render_html(f"""
+                    <div style="background:#FFFFFF; border:1px solid #FCA5A5; border-radius:8px; padding:6px 10px; font-size:0.76rem;">
+                        <div style="font-weight:700; color:#B91C1C;">{lbl} — {intensity}</div>
+                        <div style="color:#64748B; font-size:0.70rem;">Area: {area_px} px | Score: {reg.get('score', 0.0):.4f}</div>
                     </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.info("Heatmap visualization unavailable.")
+                    """)
 
-            # Panel 3: Defect Localization
-            with v_col3:
-                st.markdown("<div class='vis-panel-header'>3. Defect Localization</div>", unsafe_allow_html=True)
-                vis_b64 = res.get("visualization_base64")
-                if is_defective and vis_b64:
-                    st.image(Image.open(io.BytesIO(base64.b64decode(vis_b64))), use_container_width=True)
-                    st.caption(f"Overlay with {n_defects} confirmed bounding box(es)")
-                else:
-                    if st.session_state["uploaded_image_data"]:
-                        _, o_bytes, _ = st.session_state["uploaded_image_data"]
-                        st.image(Image.open(io.BytesIO(o_bytes)), use_container_width=True)
-                    st.caption("✔ Clean Component — Zero defect regions identified")
+        # "Why this result?" Engineering Explanation Card
+        why_border_col = "#B91C1C" if is_defective else "#15803D"
+        why_content = res.get('why_explanation', res.get('explanation', ''))
+        render_html(f"""
+        <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-left:4px solid {why_border_col}; border-radius:8px; padding:0.85rem 1.1rem; margin:12px 0;">
+            <div style="font-weight:700; font-size:0.82rem; color:{why_border_col}; margin-bottom:2px;">
+                💡 Inspection Rationale & Evidence
+            </div>
+            <div style="font-size:0.80rem; color:#334155; line-height:1.45;">
+                {why_content}
+            </div>
+        </div>
+        """)
 
-            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-
-            # Detected Anomalies Summary
-            if is_defective and res.get("localized_regions"):
-                st.markdown("""
-                <div style="font-size: 0.82rem; font-weight: 700; color: #2F4156; margin-bottom: 4px;">
-                    DETECTED ANOMALIES
-                </div>
-                """, unsafe_allow_html=True)
-                regs = res.get("localized_regions", [])
-                reg_cols = st.columns(min(3, len(regs)))
-                for r_idx, reg in enumerate(regs[:3]):
-                    with reg_cols[r_idx]:
-                        lbl = reg.get("label", f"Region {r_idx+1:02d}")
-                        intensity = reg.get("intensity", "Anomaly Region")
-                        area_px = reg.get("area", 0)
-                        st.markdown(f"""
-                        <div style="background:#FFFFFF; border:1px solid #FCA5A5; border-radius:8px; padding:6px 10px; font-size:0.76rem;">
-                            <div style="font-weight:700; color:#B91C1C;">{lbl} — {intensity}</div>
-                            <div style="color:#64748B; font-size:0.70rem;">Area: {area_px} px | Score: {reg.get('score', 0.0):.4f}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-            # "Why this result?" Card
+        # Collapsible Technical Details (Viva & Architecture Summary)
+        with st.expander("🛠️ Technical Details (Viva & Architecture Summary)", expanded=False):
             st.markdown(f"""
-            <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-left:4px solid {'#B91C1C' if is_defective else '#15803D'}; border-radius:8px; padding:0.75rem 1.0rem; margin:10px 0;">
-                <div style="font-weight:700; font-size:0.80rem; color:{'#B91C1C' if is_defective else '#15803D'}; margin-bottom:2px;">
-                    💡 Why this result?
-                </div>
-                <div style="font-size:0.78rem; color:#334155; line-height:1.4;">
-                    {res.get('why_explanation', res.get('explanation', ''))}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Collapsible Technical Details
-            with st.expander("🛠️ Technical Details (Viva & Architecture Summary)", expanded=False):
-                st.markdown(f"""
-                - **Model Architecture:** PatchCore v2.3 (Unsupervised Density-based Detection)
-                - **Feature Extractor:** ResNet18 (Layer 1, Layer 2, Layer 3 Multi-Scale Embeddings)
-                - **Patch Descriptors:** 448-dimensional feature representations on a 64×64 spatial grid
-                - **Category Memory Bank:** `models/{active_cat}/patchcore_v23/`
-                - **Image Decision Threshold ($T_{{image}}$):** `{th:.4f}`
-                - **Pixel Anomaly Threshold ($T_{{pixel}}$):** `{res.get('pixel_threshold', 0.0):.4f}`
-                - **Inference Request ID:** `{res.get('request_id', 'N/A')}`
-                """)
-
-        else:
-            # Standby State
-            st.markdown("""
-            <div style="background:#FFFFFF; border:2px dashed #E2E8F0; border-radius:12px; padding:3.5rem 1.5rem; text-align:center; color:#94A3B8;">
-                <div style="font-size:2.2rem; margin-bottom:0.5rem;">📋</div>
-                <div style="font-size:1.05rem; font-weight:700; color:#475569;">Inspection Report Standby</div>
-                <div style="font-size:0.82rem; margin-top:0.3rem;">Select an image on the left and click <b>RUN AI INSPECTION</b> to generate the optical inspection report.</div>
-            </div>
-            """, unsafe_allow_html=True)
+            - **Model Architecture:** PatchCore v2.3 (Unsupervised Density-based Detection)
+            - **Feature Extractor:** ResNet18 (Layer 1, Layer 2, Layer 3 Multi-Scale Embeddings)
+            - **Patch Descriptors:** 448-dimensional feature representations on a 64×64 spatial grid
+            - **Category Memory Bank:** `models/{active_cat}/patchcore_v23/`
+            - **Image Decision Threshold ($T_{{image}}$):** `{th:.4f}`
+            - **Pixel Anomaly Threshold ($T_{{pixel}}$):** `{res.get('pixel_threshold', 0.0):.4f}`
+            - **Inference Request ID:** `{res.get('request_id', 'N/A')}`
+            """)
 
     # -------------------------------------------------------------------------
     # BOTTOM SECTION: RECENT INSPECTIONS & QUICK INSIGHTS
@@ -896,10 +889,9 @@ elif st.session_state["nav_page"] == "Inspect":
                     f"<tr><td><b>#{item['id']}</b></td><td><code>{fname_disp}</code></td><td style='text-transform:capitalize;'>{item['category']}</td><td><span style='background:{badge_bg};color:{badge_fg};padding:2px 8px;border-radius:12px;font-weight:700;'>{item['status']}</span></td><td>{item['score']:.4f}</td><td>{item['threshold']:.4f}</td><td>{item['regions']}</td><td>{item['time_s']:.2f}s</td></tr>"
                 )
             rows_html = "".join(table_rows)
-            full_table = f"<table class='recent-table'><thead><tr><th>#</th><th>Filename</th><th>Category</th><th>Status</th><th>Score</th><th>Threshold</th><th>Regions</th><th>Latency</th></tr></thead><tbody>{rows_html}</tbody></table>"
-            st.markdown(full_table, unsafe_allow_html=True)
+            render_html(f"<table class='recent-table'><thead><tr><th>#</th><th>Filename</th><th>Category</th><th>Status</th><th>Score</th><th>Threshold</th><th>Regions</th><th>Latency</th></tr></thead><tbody>{rows_html}</tbody></table>")
         else:
-            st.markdown("<p style='font-size:0.80rem; color:#94A3B8;'>No inspections executed yet in this session.</p>", unsafe_allow_html=True)
+            render_html("<p style='font-size:0.80rem; color:#94A3B8;'>No inspections executed yet in this session.</p>")
 
     with b_col2:
         st.markdown("### 📊 Quick Insights")
@@ -910,31 +902,31 @@ elif st.session_state["nav_page"] == "Inspect":
 
         q1, q2 = st.columns(2)
         with q1:
-            st.markdown(f"""
+            render_html(f"""
             <div class="metric-card" style="margin-bottom:8px;">
                 <div class="metric-title">Total Scanned</div>
                 <div class="metric-val">{total_scanned}</div>
             </div>
-            """, unsafe_allow_html=True)
-            st.markdown(f"""
+            """)
+            render_html(f"""
             <div class="metric-card">
                 <div class="metric-title">Defective (Fail)</div>
                 <div class="metric-val" style="color:#B91C1C;">{defective_scanned}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
         with q2:
-            st.markdown(f"""
+            render_html(f"""
             <div class="metric-card" style="margin-bottom:8px;">
                 <div class="metric-title">Normal (Pass)</div>
                 <div class="metric-val" style="color:#15803D;">{normal_scanned}</div>
             </div>
-            """, unsafe_allow_html=True)
-            st.markdown(f"""
+            """)
+            render_html(f"""
             <div class="metric-card">
                 <div class="metric-title">Pass Rate</div>
                 <div class="metric-val">{acc_pct}%</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
 
 # =============================================================================
@@ -960,20 +952,20 @@ elif st.session_state["nav_page"] == "Analytics":
         avg_lat = round(sum(x["time_s"] for x in hist) / max(1, total_imgs), 2) if hist else 2.1
         st.metric("Avg Latency", f"{avg_lat} s")
 
-    st.markdown("---")
+    st.markdown("<hr style='margin: 1.4rem 0; border-color: #E2E8F0;' />", unsafe_allow_html=True)
     st.markdown("### Category Distribution")
     c_cols = st.columns(5)
     for idx, (c_key, c_data) in enumerate(CATEGORIES.items()):
         c_count = sum(1 for x in hist if x["category"] == c_key)
         with c_cols[idx]:
-            st.markdown(f"""
+            render_html(f"""
             <div class="metric-card" style="text-align:center;">
-                <div class="cat-icon">{c_data['icon']}</div>
-                <div class="cat-title">{c_data['name']}</div>
+                <div style="font-size:1.6rem; margin-bottom:2px;">{c_data['icon']}</div>
+                <div style="font-weight:700; font-size:0.92rem; color:#2F4156;">{c_data['name']}</div>
                 <div class="metric-val" style="color:#567C8D; margin:4px 0;">{c_count}</div>
                 <div class="metric-sub">Inspections</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
 
 # =============================================================================
@@ -1011,7 +1003,7 @@ elif st.session_state["nav_page"] == "Model":
     ```
     """)
 
-    st.markdown("---")
+    st.markdown("<hr style='margin: 1.4rem 0; border-color: #E2E8F0;' />", unsafe_allow_html=True)
     st.markdown("### 🎓 Viva Examination Guide")
     with st.expander("Q1: Why PatchCore instead of Convolutional Autoencoders?", expanded=True):
         st.write("""

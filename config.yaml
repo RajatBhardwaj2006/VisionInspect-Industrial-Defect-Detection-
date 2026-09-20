@@ -83,6 +83,9 @@ categories:
     min_region_area: 15
     border_margin: 0
     merge_distance: 12.0
+    enable_presence_check: true
+    presence_threshold: 60000
+    enable_canonicalization: true
 
   zipper:
     model_dir: models/zipper/patchcore_v23

@@ -43,6 +43,7 @@ task-*.log
 # OS and Editor specific
 .DS_Store
 Thumbs.db
+desktop.ini
 .idea/
 .vscode/
 
