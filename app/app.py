@@ -492,6 +492,348 @@ render_html("""
         color: var(--text-secondary);
     }
 
+    /* =========================================================================
+       HOMEPAGE LIVE HERO INSPECTION SCENE (SIMULATED OPTICAL SCAN)
+       ========================================================================= */
+    :root {
+        --scan-cycle: 6.5s;
+    }
+
+    .live-inspection-frame {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 420px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    .scan-status-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 140px;
+        height: 18px;
+    }
+
+    .status-scanning,
+    .status-detected {
+        position: absolute;
+        right: 0;
+        top: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .status-scanning {
+        color: var(--text-secondary);
+        animation: statusScanningAnim var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .scanning-pulse-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #DC2626;
+        display: inline-block;
+        animation: pulseDot 1.2s ease-in-out infinite alternate;
+    }
+
+    .status-detected {
+        color: #DC2626;
+        animation: statusDetectedAnim var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .detected-badge-dot {
+        font-size: 0.75rem;
+        line-height: 1;
+    }
+
+    /* Scanner Viewport */
+    .scanner-viewport {
+        position: relative;
+        display: inline-block;
+        max-width: 88%;
+        margin: 26px auto;
+        overflow: hidden;
+        line-height: 0;
+        border-radius: 4px;
+    }
+
+    .scanner-carton-img {
+        max-height: 380px;
+        width: 100%;
+        object-fit: contain;
+        display: block;
+        border-radius: 4px;
+    }
+
+    /* Laser Scanning Beam */
+    .scanner-laser-line {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        pointer-events: none;
+        z-index: 5;
+        animation: laserScanMove var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .laser-core {
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(
+            90deg,
+            rgba(220, 38, 38, 0) 0%,
+            rgba(220, 38, 38, 0.85) 12%,
+            #EF4444 50%,
+            rgba(220, 38, 38, 0.85) 88%,
+            rgba(220, 38, 38, 0) 100%
+        );
+        box-shadow: 0 0 6px rgba(239, 68, 68, 0.65), 0 0 1px #DC2626;
+    }
+
+    .laser-ambient {
+        position: absolute;
+        top: -4px;
+        left: 10%;
+        width: 80%;
+        height: 10px;
+        background: radial-gradient(
+            ellipse at center,
+            rgba(239, 68, 68, 0.18) 0%,
+            rgba(239, 68, 68, 0.05) 55%,
+            rgba(239, 68, 68, 0) 80%
+        );
+        pointer-events: none;
+    }
+
+    /* Defect Detection Zone & Reticle */
+    .scanner-defect-zone {
+        position: absolute;
+        top: 15%;
+        left: 46.5%;
+        width: 18.5%;
+        height: 22.5%;
+        pointer-events: none;
+        z-index: 4;
+        animation: defectBoxAnim var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .defect-reticle {
+        width: 100%;
+        height: 100%;
+        border: 1.5px solid #DC2626;
+        border-radius: 2px;
+        background: rgba(220, 38, 38, 0.06);
+        position: relative;
+        box-sizing: border-box;
+    }
+
+    .defect-corner-tag {
+        position: absolute;
+        top: -18px;
+        left: -1px;
+        background: #DC2626;
+        color: #FFFFFF;
+        font-size: 0.60rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        padding: 2px 5px;
+        border-radius: 2px;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .defect-callout {
+        position: absolute;
+        bottom: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+
+    .defect-callout-arrow {
+        display: block;
+    }
+
+    .defect-callout-text {
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: #DC2626;
+    }
+
+    /* Animation Keyframes */
+    @keyframes laserScanMove {
+        0% {
+            top: 2%;
+            opacity: 1;
+        }
+        25% {
+            top: 18%;
+            opacity: 1;
+        }
+        30% {
+            top: 24%;
+            opacity: 1;
+        }
+        36% {
+            top: 25%;
+            opacity: 1;
+        }
+        55% {
+            top: 65%;
+            opacity: 1;
+        }
+        85% {
+            top: 98%;
+            opacity: 0.8;
+        }
+        90% {
+            top: 100%;
+            opacity: 0;
+        }
+        94% {
+            top: 0%;
+            opacity: 0;
+        }
+        100% {
+            top: 2%;
+            opacity: 1;
+        }
+    }
+
+    @keyframes defectBoxAnim {
+        0%, 28% {
+            opacity: 0;
+            transform: scale(0.96);
+        }
+        32%, 58% {
+            opacity: 1;
+            transform: scale(1.0);
+        }
+        64%, 100% {
+            opacity: 0;
+            transform: scale(0.98);
+        }
+    }
+
+    @keyframes statusScanningAnim {
+        0%, 28% {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        32%, 58% {
+            opacity: 0;
+            pointer-events: none;
+        }
+        64%, 100% {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    }
+
+    @keyframes statusDetectedAnim {
+        0%, 28% {
+            opacity: 0;
+            pointer-events: none;
+        }
+        32%, 58% {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        64%, 100% {
+            opacity: 0;
+            pointer-events: none;
+        }
+    }
+
+    @keyframes pulseDot {
+        0% {
+            opacity: 0.4;
+            transform: scale(0.85);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1.15);
+        }
+    }
+
+    /* Accessibility: Reduced Motion Support */
+    @media (prefers-reduced-motion: reduce) {
+        .scanner-laser-line {
+            animation: none !important;
+            display: none !important;
+        }
+        .scanner-defect-zone {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+        .status-scanning {
+            animation: none !important;
+            display: none !important;
+        }
+        .status-detected {
+            animation: none !important;
+            opacity: 1 !important;
+        }
+        .scanning-pulse-dot {
+            animation: none !important;
+        }
+    }
+
+    /* Responsive scaling */
+    @media (max-width: 992px) {
+        .live-inspection-frame {
+            min-height: 340px;
+            padding: 18px;
+        }
+        .scanner-carton-img {
+            max-height: 300px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .live-inspection-frame {
+            min-height: 280px;
+            padding: 14px;
+        }
+        .scanner-carton-img {
+            max-height: 230px;
+        }
+        .visual-top-meta, .visual-bottom-meta {
+            font-size: 0.60rem;
+            left: 16px;
+            right: 16px;
+        }
+        .defect-callout-text {
+            font-size: 0.54rem;
+        }
+        .defect-corner-tag {
+            font-size: 0.52rem;
+            top: -15px;
+        }
+    }
+
     /* Scanning Container & Laser */
     .scan-container {
         position: relative;
@@ -686,7 +1028,9 @@ if st.session_state["nav_page"] == "Home":
         """)
 
     with hero_right:
-        carton_path = Path("assets/carton_box_scan.png")
+        carton_path = Path("assets/carton_box_clean.png")
+        if not carton_path.exists():
+            carton_path = Path("assets/carton_box_scan.png")
         if not carton_path.exists():
             carton_path = Path("assets/carton_box_scan.jpg")
         if carton_path.exists():
@@ -698,16 +1042,47 @@ if st.session_state["nav_page"] == "Home":
             img_mime = "image/png"
 
         render_html(f"""
-        <div class="hero-visual-frame">
+        <div class="hero-visual-frame live-inspection-frame">
             <div class="corner-bracket corner-tl"></div>
             <div class="corner-bracket corner-tr"></div>
             <div class="corner-bracket corner-bl"></div>
             <div class="corner-bracket corner-br"></div>
+            
             <div class="visual-top-meta">
-                <span>VISIONINSPECT // OPTICAL INSPECTION</span>
-                <span style="color: var(--danger); font-weight: 700;">● ANOMALY LOCALIZED</span>
+                <span class="optical-title">VISIONINSPECT // OPTICAL INSPECTION</span>
+                <div class="scan-status-wrapper">
+                    <div class="status-scanning">
+                        <span class="scanning-pulse-dot"></span>
+                        <span>SCANNING</span>
+                    </div>
+                    <div class="status-detected">
+                        <span class="detected-badge-dot">●</span>
+                        <span>DEFECT DETECTED</span>
+                    </div>
+                </div>
             </div>
-            <img src="data:{img_mime};base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0; border-radius: 4px;" />
+
+            <div class="scanner-viewport">
+                <img src="data:{img_mime};base64,{b64_sample}" class="scanner-carton-img" alt="Optical Inspection" />
+                
+                <div class="scanner-laser-line">
+                    <div class="laser-core"></div>
+                    <div class="laser-ambient"></div>
+                </div>
+
+                <div class="scanner-defect-zone">
+                    <div class="defect-reticle">
+                        <div class="defect-corner-tag">DAMAGE</div>
+                    </div>
+                    <div class="defect-callout">
+                        <svg class="defect-callout-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M6 11V2M6 2L2 6M6 2L10 6" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="defect-callout-text">DEFECT DETECTED</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="visual-bottom-meta">
                 <span>SAMPLE ACQUISITION // HIGH-RESOLUTION SCAN</span>
                 <span>VISUAL ANOMALY INSPECTION</span>
