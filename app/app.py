@@ -139,7 +139,9 @@ def purge_inspection(new_category: Optional[str] = None):
 
 # Zero-indentation HTML renderer to prevent CommonMark code block leaks
 def render_html(content: str):
-    st.markdown(textwrap.dedent(content).strip(), unsafe_allow_html=True)
+    cleaned_lines = [line.strip() for line in content.strip().split("\n") if line.strip()]
+    cleaned_content = "\n".join(cleaned_lines)
+    st.markdown(cleaned_content, unsafe_allow_html=True)
 
 # Cached thumbnail helper for instant component catalog rendering
 @st.cache_data
@@ -158,101 +160,97 @@ def get_thumbnail_b64(img_path: str) -> str:
         return ""
 
 # -----------------------------------------------------------------------------
-# MINIMALIST INDUSTRIAL DESIGN SYSTEM (APPLE / INDUSTRIAL LAB AESTHETIC)
+# CENTRALIZED DESIGN SYSTEM (CSS VARIABLES & ATOMIC TOKENS)
 # -----------------------------------------------------------------------------
 render_html("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    /* Global resets */
+    :root {
+        --bg: #F5F5F3;
+        --surface: #FFFFFF;
+        --surface-subtle: #FAFAF8;
+        --text-primary: #171717;
+        --text-secondary: #5F6368;
+        --text-muted: #7A7A7A;
+        --border: #E4E4E0;
+        --border-strong: #D4D4CF;
+        --dark: #171717;
+        --dark-hover: #2A2A2A;
+        --success: #15803D;
+        --success-bg: #F0FDF4;
+        --danger: #B91C1C;
+        --danger-bg: #FEF2F2;
+        --warning: #A16207;
+        --warning-bg: #FFFBEB;
+    }
+
+    /* Global Chrome Removal & App Resets */
     #MainMenu, header, footer, .stDeployButton {
         display: none !important;
         visibility: hidden !important;
     }
-    
+
     html, body, [class*="css"], .stApp {
-        font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Helvetica Neue", sans-serif;
-        background-color: #F5F5F3;
-        color: #171717;
+        font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif !important;
+        background-color: var(--bg) !important;
+        color: var(--text-primary) !important;
         letter-spacing: -0.01em;
     }
 
+    /* Centered Layout Container (1280-1400px with 32px desktop padding) */
     .block-container {
-        padding-top: 1.2rem !important;
-        padding-bottom: 3.5rem !important;
-        max-width: 1240px !important;
+        max-width: 1320px !important;
+        width: calc(100% - 64px) !important;
+        padding-left: 32px !important;
+        padding-right: 32px !important;
+        padding-top: 0.8rem !important;
+        padding-bottom: 2.5rem !important;
+        margin: 0 auto !important;
     }
 
-    /* Minimal Navbar */
-    .vi-navbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.65rem 0 1.1rem 0;
-        border-bottom: 1px solid #E5E5E2;
-        margin-bottom: 1.6rem;
-    }
-    .vi-brand {
-        font-size: 1.05rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        color: #171717;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .vi-brand-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #171717;
-        display: inline-block;
-    }
-
-    /* Buttons */
+    /* Standardized Button System */
     div.stButton > button {
         border-radius: 6px !important;
         font-weight: 500 !important;
-        font-size: 0.85rem !important;
-        padding: 0.5rem 1.2rem !important;
+        font-size: 0.84rem !important;
+        padding: 0.45rem 1.1rem !important;
         transition: all 0.15s ease !important;
-        border: 1px solid #E5E5E2 !important;
-        background-color: #FFFFFF !important;
-        color: #171717 !important;
+        border: 1px solid var(--border) !important;
+        background-color: var(--surface) !important;
+        color: var(--text-primary) !important;
         box-shadow: none !important;
+        cursor: pointer !important;
     }
     div.stButton > button:hover {
-        background-color: #ECECE9 !important;
-        border-color: #D4D4D0 !important;
-        color: #171717 !important;
+        background-color: var(--surface-subtle) !important;
+        border-color: var(--border-strong) !important;
+        color: var(--text-primary) !important;
     }
     div.stButton > button[kind="primary"] {
-        background-color: #171717 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #171717 !important;
+        background-color: var(--dark) !important;
+        color: var(--surface) !important;
+        border: 1px solid var(--dark) !important;
     }
     div.stButton > button[kind="primary"]:hover {
-        background-color: #2E2E2E !important;
-        border-color: #2E2E2E !important;
-        color: #FFFFFF !important;
+        background-color: var(--dark-hover) !important;
+        border-color: var(--dark-hover) !important;
+        color: var(--surface) !important;
     }
 
-    /* Prevent any button/pill text truncation */
+    /* Prevent Button / Pill Text Clipping */
     div.stButton > button,
     div.stButton > button p,
     div.stButton > button span,
     [data-testid="stPills"] button,
     [data-testid="stPills"] button p,
-    [data-testid="stPills"] button span,
-    [data-testid="stSegmentedControl"] button,
-    [data-testid="stSegmentedControl"] button p {
+    [data-testid="stPills"] button span {
         white-space: nowrap !important;
         text-overflow: clip !important;
         overflow: visible !important;
-        font-size: 0.84rem !important;
     }
 
-    /* Minimalist Apple-style Pills for Full Category Names */
+    /* Minimalist Apple-style Pills */
     [data-testid="stPills"] {
         display: flex !important;
         flex-wrap: wrap !important;
@@ -262,24 +260,83 @@ render_html("""
     }
     [data-testid="stPills"] button {
         border-radius: 6px !important;
-        border: 1px solid #E5E5E2 !important;
-        background-color: #FFFFFF !important;
-        color: #404040 !important;
+        border: 1px solid var(--border) !important;
+        background-color: var(--surface) !important;
+        color: var(--text-secondary) !important;
         padding: 5px 14px !important;
         font-weight: 500 !important;
         box-shadow: none !important;
         transition: all 0.15s ease !important;
     }
     [data-testid="stPills"] button:hover {
-        border-color: #C0C0BA !important;
-        color: #171717 !important;
-        background-color: #F8F8F6 !important;
+        border-color: var(--border-strong) !important;
+        color: var(--text-primary) !important;
+        background-color: var(--surface-subtle) !important;
     }
     [data-testid="stPills"] button[aria-selected="true"] {
-        background-color: #171717 !important;
-        color: #FFFFFF !important;
-        border-color: #171717 !important;
+        background-color: var(--dark) !important;
+        color: var(--surface) !important;
+        border-color: var(--dark) !important;
         font-weight: 600 !important;
+    }
+
+    /* Clean Selectbox & Popover Styling */
+    div[data-testid="stSelectbox"] > div {
+        background-color: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 6px !important;
+        color: var(--text-primary) !important;
+    }
+    div[data-testid="stSelectbox"] * {
+        color: var(--text-primary) !important;
+    }
+    div[data-testid="stSelectbox"] svg {
+        fill: var(--text-primary) !important;
+    }
+    div[data-baseweb="select"] {
+        background-color: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 6px !important;
+    }
+    div[data-baseweb="select"] * {
+        color: var(--text-primary) !important;
+    }
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
+        background-color: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 6px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+    }
+    li[role="option"] {
+        background-color: var(--surface) !important;
+        color: var(--text-primary) !important;
+    }
+    li[role="option"]:hover, li[role="option"][aria-selected="true"] {
+        background-color: var(--surface-subtle) !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* File Uploader Clean Styling */
+    div[data-testid="stFileUploader"] {
+        background-color: var(--surface) !important;
+        border: 1px dashed var(--border-strong) !important;
+        border-radius: 6px !important;
+        padding: 1rem !important;
+    }
+    div[data-testid="stFileUploader"] section {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+    div[data-testid="stFileUploader"] span,
+    div[data-testid="stFileUploader"] div,
+    div[data-testid="stFileUploader"] p {
+        color: var(--text-secondary) !important;
+    }
+    div[data-testid="stFileUploader"] button {
+        background-color: var(--surface) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border) !important;
     }
 
     /* Hero Typography */
@@ -288,39 +345,39 @@ render_html("""
         font-weight: 600;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: #6B6B6B;
-        margin-bottom: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
     }
     .hero-heading {
-        font-size: 3.4rem;
+        font-size: 3.2rem;
         font-weight: 700;
         line-height: 1.06;
         letter-spacing: -0.035em;
-        color: #171717;
-        margin: 0 0 16px 0;
+        color: var(--text-primary);
+        margin: 0 0 14px 0;
     }
     .hero-sub {
-        font-size: 1.08rem;
+        font-size: 1.0rem;
         line-height: 1.55;
-        color: #6B6B6B;
+        color: var(--text-secondary);
         max-width: 440px;
-        margin-bottom: 24px;
+        margin-bottom: 22px;
         font-weight: 400;
     }
 
-    /* Central Hero Product Visual Container */
+    /* Central Hero Visual Container */
     .hero-visual-frame {
         position: relative;
-        background: #FFFFFF;
-        border: 1px solid #E5E5E2;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 24px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 440px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+        min-height: 400px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
     .corner-bracket {
         position: absolute;
@@ -338,37 +395,37 @@ render_html("""
     .visual-top-meta {
         position: absolute;
         top: 14px;
-        left: 32px;
-        right: 32px;
+        left: 28px;
+        right: 28px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         font-size: 0.68rem;
         font-weight: 600;
         letter-spacing: 0.08em;
-        color: #8E8E93;
+        color: var(--text-secondary);
         text-transform: uppercase;
     }
     .visual-bottom-meta {
         position: absolute;
         bottom: 14px;
-        left: 32px;
-        right: 32px;
+        left: 28px;
+        right: 28px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         font-size: 0.68rem;
-        color: #8E8E93;
+        color: var(--text-secondary);
     }
 
-    /* Scanning Container */
+    /* Scanning Container & Laser */
     .scan-container {
         position: relative;
         width: 100%;
         max-width: 480px;
         margin: 0 auto;
-        background: #FFFFFF;
-        border: 1px solid #E5E5E2;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 8px;
         overflow: hidden;
         padding: 16px;
@@ -389,57 +446,15 @@ render_html("""
         100% { top: 96%; opacity: 0.8; }
     }
 
-    /* Category Pill Selector */
-    .cat-selector-row {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        margin: 18px 0 24px 0;
-        flex-wrap: wrap;
-    }
-    .cat-text-item {
-        font-size: 0.88rem;
-        font-weight: 500;
-        color: #6B6B6B;
-        cursor: pointer;
-        padding-bottom: 2px;
-        transition: color 0.15s ease;
-    }
-    .cat-text-item.active {
-        color: #171717;
-        font-weight: 600;
-        border-bottom: 1.5px solid #171717;
-    }
-
-    /* Result Cards & Panels */
-    .result-panel-card {
-        background: #FFFFFF;
-        border: 1px solid #E5E5E2;
-        border-radius: 6px;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    }
-    .result-panel-header {
-        padding: 8px 12px;
-        border-bottom: 1px solid #F0F0EE;
-        font-size: 0.70rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        color: #6B6B6B;
-        text-transform: uppercase;
-        display: flex;
-        justify-content: space-between;
-    }
-
-    /* Minimal Info Strip */
+    /* Metric Strip */
     .metric-strip {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: #FFFFFF;
-        border: 1px solid #E5E5E2;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 6px;
-        padding: 14px 20px;
+        padding: 14px 24px;
         margin: 16px 0;
         flex-wrap: wrap;
         gap: 16px;
@@ -449,9 +464,9 @@ render_html("""
         flex-direction: column;
     }
     .metric-label {
-        font-size: 0.68rem;
+        font-size: 0.70rem;
         font-weight: 600;
-        color: #8E8E93;
+        color: var(--text-secondary);
         letter-spacing: 0.06em;
         text-transform: uppercase;
         margin-bottom: 2px;
@@ -459,49 +474,60 @@ render_html("""
     .metric-value {
         font-size: 1.25rem;
         font-weight: 700;
-        color: #171717;
+        color: var(--text-primary);
         line-height: 1.1;
     }
 
-    /* Minimal Legend */
+    /* Heatmap Legend */
     .minimal-legend {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        font-size: 0.68rem;
-        color: #8E8E93;
+        font-size: 0.70rem;
+        font-weight: 500;
+        color: var(--text-secondary);
         margin-top: 6px;
         padding: 0 4px;
     }
     .legend-gradient {
         flex: 1;
-        height: 4px;
+        height: 6px;
         margin: 0 10px;
-        border-radius: 2px;
+        border-radius: 3px;
         background: linear-gradient(to right, #000080 0%, #00FFFF 35%, #FFFF00 70%, #FF0000 100%);
     }
 
-    /* Minimalist upload zone */
-    .upload-zone-frame {
-        background: #FFFFFF;
-        border: 1px dashed #D4D4D0;
-        border-radius: 8px;
-        padding: 3rem 1.5rem;
-        text-align: center;
-        transition: border-color 0.15s ease;
+    /* Plain Text Navigation Links */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stHorizontalBlock"] button {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        border-bottom: 2px solid transparent !important;
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+        padding: 6px 14px !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stHorizontalBlock"] button:hover {
+        color: var(--text-primary) !important;
+        background: transparent !important;
+        border-bottom: 2px solid var(--border-strong) !important;
     }
 </style>
 """)
 
 # -----------------------------------------------------------------------------
-# MINIMALIST NAVBAR
+# MINIMALIST NAVBAR (NO BULLETS, PLAIN TEXT WITH ACTIVE UNDERLINE)
 # -----------------------------------------------------------------------------
 nav_col1, nav_col2, nav_col3 = st.columns([1.8, 3.4, 1.4])
 
 with nav_col1:
     render_html("""
     <div style="padding-top: 4px;">
-        <span class="vi-brand"><span class="vi-brand-dot"></span> VisionInspect</span>
+        <span style="font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--text-primary); display: inline-block;"></span>
+            VisionInspect
+        </span>
     </div>
     """)
 
@@ -511,8 +537,17 @@ with nav_col2:
     for idx, p in enumerate(pages):
         with p_cols[idx]:
             is_active = (st.session_state["nav_page"] == p)
-            btn_label = f"• {p}" if is_active else p
-            if st.button(btn_label, key=f"nav_btn_{p}", use_container_width=True):
+            if is_active:
+                render_html(f"""
+                <style>
+                    div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stHorizontalBlock"] > div:nth-child({idx+1}) button {{
+                        border-bottom: 2px solid var(--dark) !important;
+                        color: var(--text-primary) !important;
+                        font-weight: 600 !important;
+                    }}
+                </style>
+                """)
+            if st.button(p, key=f"nav_btn_{p}", use_container_width=True):
                 st.session_state["nav_page"] = p
                 st.rerun()
 
@@ -522,7 +557,7 @@ with nav_col3:
         purge_inspection()
         st.rerun()
 
-st.markdown("<hr style='margin: 0.2rem 0 1.4rem 0; border: none; border-bottom: 1px solid #E5E5E2;' />", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 0.2rem 0 1.2rem 0; border: none; border-bottom: 1px solid var(--border);' />", unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -541,21 +576,15 @@ if st.session_state["nav_page"] == "Home":
         <p class="hero-sub">AI-powered visual inspection for detecting and localizing manufacturing defects with sub-pixel precision.</p>
         """)
 
-        # Clean Hero Action Buttons
-        act_col1, act_col2 = st.columns([2.0, 1.0])
-        with act_col1:
-            if st.button("Start Inspection", type="primary", key="home_hero_start", use_container_width=True):
-                st.session_state["nav_page"] = "Inspect"
-                st.rerun()
-        with act_col2:
-            if st.button("→", key="home_hero_arrow", use_container_width=True):
-                st.session_state["nav_page"] = "Inspect"
-                st.rerun()
+        # Clean Hero Action Button
+        if st.button("Start Inspection →", type="primary", key="home_hero_start_btn", use_container_width=False):
+            st.session_state["nav_page"] = "Inspect"
+            st.rerun()
 
         st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
 
         # Minimal Category Selector with FULL Names (No Truncation)
-        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #8E8E93; text-transform: uppercase; margin-bottom: 2px;'>PRODUCT</div>")
+        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px;'>PRODUCT CATEGORY</div>")
         home_product_options = ["Carton Box", "Bottle", "Leather", "Transistor", "Zipper", "Screw"]
         cur_selection = st.session_state.get("home_hero_selection", "Carton Box")
         if cur_selection not in home_product_options:
@@ -578,9 +607,9 @@ if st.session_state["nav_page"] == "Home":
 
         # Small Subtle Technical Information Area
         render_html("""
-        <div style="margin-top: 36px; padding-top: 14px; border-top: 1px solid #E5E5E2; font-size: 0.74rem; color: #8E8E93; line-height: 1.6;">
-            <b>PatchCore v2.3</b> &nbsp;•&nbsp; Unsupervised anomaly detection &nbsp;•&nbsp; ResNet-18 &nbsp;•&nbsp; 448D features<br>
-            Trained on defect-free samples. Designed to detect deviations from normal structure.
+        <div style="margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;">
+            <span style="font-weight: 600; color: var(--text-primary);">PatchCore v2.3</span> &nbsp;•&nbsp; Unsupervised anomaly detection &nbsp;•&nbsp; ResNet-18 &nbsp;•&nbsp; 448D features<br>
+            Trained exclusively on defect-free samples. Calibrated to detect structural and surface departures from normal manifold.
         </div>
         """)
 
@@ -605,12 +634,12 @@ if st.session_state["nav_page"] == "Home":
                 <div class="corner-bracket corner-br"></div>
                 <div class="visual-top-meta">
                     <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
-                    <span style="color: #EF4444; font-weight: 700;">● DEFECT DETECTED</span>
+                    <span style="color: var(--danger); font-weight: 700;">● DEFECT DETECTED</span>
                 </div>
                 <img src="data:{img_mime};base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0; border-radius: 4px;" />
                 <div class="visual-bottom-meta">
                     <span>TARGET: INDUSTRIAL PACKAGING (CARTON BOX)</span>
-                    <span style="color: #EF4444; font-weight: 600;">DEFECT: CRUSHED FLAP / DAMAGE</span>
+                    <span style="color: var(--danger); font-weight: 600;">DEFECT: CRUSHED FLAP / DAMAGE</span>
                 </div>
             </div>
             """)
@@ -632,7 +661,7 @@ if st.session_state["nav_page"] == "Home":
                 <div class="corner-bracket corner-br"></div>
                 <div class="visual-top-meta">
                     <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
-                    <span>● READY</span>
+                    <span style="color: var(--success); font-weight: 600;">● READY</span>
                 </div>
                 <img src="data:image/png;base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0;" />
                 <div class="visual-bottom-meta">
@@ -659,9 +688,9 @@ elif st.session_state["nav_page"] == "Inspect":
 
         render_html("""
         <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; color: #EF4444; text-transform: uppercase;">SCANNING IN PROGRESS</div>
-            <div style="font-size: 1.8rem; font-weight: 700; color: #171717; margin-top: 4px;">Analyzing Industrial Component</div>
-            <div style="font-size: 0.82rem; color: #6B6B6B; margin-top: 4px;">Precision optical anomaly detection with sub-pixel localization</div>
+            <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; color: var(--danger); text-transform: uppercase;">SCANNING IN PROGRESS</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">Analyzing Industrial Component</div>
+            <div style="font-size: 0.84rem; color: var(--text-secondary); margin-top: 4px;">Precision optical anomaly detection with sub-pixel localization</div>
         </div>
         """)
 
@@ -673,17 +702,17 @@ elif st.session_state["nav_page"] == "Inspect":
             <div class="corner-bracket corner-br"></div>
             <div class="scan-laser"></div>
             <img src="data:image/png;base64,{b64_scan}" style="width: 100%; display: block; filter: contrast(1.02); border-radius: 4px;" />
-            <div style="position: absolute; bottom: 12px; left: 16px; right: 16px; background: rgba(23, 23, 23, 0.85); backdrop-filter: blur(4px); padding: 8px 14px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; font-size: 0.72rem; font-weight: 600;">
+            <div style="position: absolute; bottom: 12px; left: 16px; right: 16px; background: rgba(23, 23, 23, 0.88); backdrop-filter: blur(4px); padding: 8px 14px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; font-size: 0.72rem; font-weight: 600;">
                 <span>● SCANNING ACTIVE</span>
                 <span>RESNET-18 (448D) // CORESET MEMORY</span>
             </div>
         </div>
 
-        <div style="max-width: 520px; margin: 18px auto 0 auto; background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 12px 18px; font-size: 0.76rem; color: #6B6B6B; display: flex; justify-content: space-between;">
-            <span><b>01</b> Scanning Component</span>
-            <span><b>02</b> Extracting 448D Features</span>
-            <span><b>03</b> Anomaly Distance</span>
-            <span><b>04</b> Morphological Gate</span>
+        <div style="max-width: 520px; margin: 18px auto 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px 18px; font-size: 0.76rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+            <span><b style="color: var(--text-primary);">01</b> Scanning Component</span>
+            <span><b style="color: var(--text-primary);">02</b> Extracting 448D Features</span>
+            <span><b style="color: var(--text-primary);">03</b> Anomaly Distance</span>
+            <span><b style="color: var(--text-primary);">04</b> Morphological Gate</span>
         </div>
         """)
 
@@ -746,22 +775,22 @@ elif st.session_state["nav_page"] == "Inspect":
                 purge_inspection()
                 st.rerun()
 
-        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-        render_html("<div style='font-size: 0.72rem; font-weight: 600; letter-spacing: 0.10em; color: #8E8E93; text-transform: uppercase;'>INSPECTION RESULT</div>")
+        st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.10em; color: var(--text-secondary); text-transform: uppercase;'>INSPECTION RESULT</div>")
 
         if is_defective:
-            subtext = f"{n_defects} confirmed defect region(s) localized with decision margin +{margin:.4f} exceeding nominal image threshold." if n_defects > 0 else f"Elevated anomaly score (+{margin:.4f}) exceeding nominal image threshold."
+            subtext = f"{n_defects} localized anomaly region(s) detected exceeding nominal inspection criteria (Decision margin: +{margin:.4f})." if n_defects > 0 else f"Anomaly score exceeded nominal threshold (Decision margin: +{margin:.4f})."
             render_html(f"""
-            <div style="font-size: 2.4rem; font-weight: 800; color: #B91C1C; letter-spacing: -0.02em; line-height: 1.1;">DEFECTIVE</div>
-            <div style="font-size: 0.95rem; color: #404040; margin-top: 4px;">{subtext}</div>
+            <div style="font-size: 2.3rem; font-weight: 800; color: var(--danger); letter-spacing: -0.02em; line-height: 1.1;">DEFECTIVE</div>
+            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">{subtext}</div>
             """)
         else:
             render_html(f"""
-            <div style="font-size: 2.4rem; font-weight: 800; color: #15803D; letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
-            <div style="font-size: 0.95rem; color: #404040; margin-top: 4px;">Zero anomaly clusters detected. Component matches nominal distribution within calibrated thresholds (Margin: {margin:.4f}).</div>
+            <div style="font-size: 2.3rem; font-weight: 800; color: var(--success); letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
+            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">Zero anomaly clusters detected. Component matches nominal distribution within calibrated thresholds (Decision margin: {margin:.4f}).</div>
             """)
 
-        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
         # ---------------------------------------------------------------------
         # MAIN RESULT VISUAL (HUGE THREE-PANEL SECTION)
@@ -770,15 +799,15 @@ elif st.session_state["nav_page"] == "Inspect":
 
         # 01 ORIGINAL IMAGE
         with v_col1:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; margin-bottom: 6px;'>01 &nbsp; ORIGINAL IMAGE</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>01 &nbsp; ORIGINAL IMAGE</div>")
             if st.session_state["uploaded_image_data"]:
                 _, orig_bytes, _ = st.session_state["uploaded_image_data"]
                 st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
-            render_html("<div style='font-size: 0.68rem; color: #8E8E93; margin-top: 4px;'>Pristine optical sensor acquisition</div>")
+            render_html("<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>Pristine optical sensor acquisition</div>")
 
         # 02 ANOMALY MAP
         with v_col2:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; margin-bottom: 6px;'>02 &nbsp; ANOMALY MAP</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>02 &nbsp; ANOMALY MAP</div>")
             hm_b64 = res.get("heatmap_base64")
             if hm_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(hm_b64))), use_container_width=True)
@@ -794,22 +823,22 @@ elif st.session_state["nav_page"] == "Inspect":
 
         # 03 DEFECT LOCALIZATION
         with v_col3:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; margin-bottom: 6px;'>03 &nbsp; DEFECT LOCALIZATION</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>03 &nbsp; DEFECT LOCALIZATION</div>")
             vis_b64 = res.get("visualization_base64")
             if is_defective and vis_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(vis_b64))), use_container_width=True)
-                render_html(f"<div style='font-size: 0.68rem; color: #B91C1C; margin-top: 4px; font-weight: 600;'>{n_defects} confirmed defect region(s) localized</div>")
+                render_html(f"<div style='font-size: 0.68rem; color: var(--danger); margin-top: 4px; font-weight: 600;'>{n_defects} confirmed defect region(s) localized</div>")
             else:
                 if st.session_state["uploaded_image_data"]:
                     _, orig_bytes, _ = st.session_state["uploaded_image_data"]
                     st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
-                render_html("<div style='font-size: 0.68rem; color: #15803D; margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero anomaly clusters detected</div>")
+                render_html("<div style='font-size: 0.68rem; color: var(--success); margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero anomaly clusters detected</div>")
 
         # ---------------------------------------------------------------------
         # METRIC STRIP
         # ---------------------------------------------------------------------
         margin_sign = f"+{margin:.4f}" if margin > 0 else f"{margin:.4f}"
-        margin_color = "#B91C1C" if margin > 0 else "#15803D"
+        margin_color = "var(--danger)" if margin > 0 else "var(--success)"
 
         render_html(f"""
         <div class="metric-strip">
@@ -837,71 +866,73 @@ elif st.session_state["nav_page"] == "Inspect":
         """)
 
         # ---------------------------------------------------------------------
-        # NEW SECTION 1: WHY IS THIS PRODUCT DEFECTIVE / NORMAL?
+        # SECTION 1: WHY IS THIS PRODUCT DEFECTIVE / NORMAL?
         # ---------------------------------------------------------------------
         sec1_header = "WHY IS THIS PRODUCT DEFECTIVE?" if is_defective else "WHY IS THIS PRODUCT NORMAL?"
         if is_defective:
-            what_text = f"Optical feature extraction yielded an anomaly score of <b>{score:.4f}</b>, exceeding the calibrated nominal threshold of <b>{th:.4f}</b> (Decision Margin: <b style='color:#B91C1C;'>+{margin:.4f}</b>)."
+            what_text = f"Anomaly score {score:.4f} exceeded calibrated threshold {th:.4f} (Decision margin: +{margin:.4f})."
             if regs:
-                region_coords_str = ", ".join([f"<b>{r.get('label', f'Region {i+1}')}</b> (area: {r.get('area', 0)} px, peak score: {r.get('score', 0.0):.4f})" for i, r in enumerate(regs[:3])])
-                where_text = f"Localized to <b>{n_defects} discrete defect cluster(s)</b>: {region_coords_str}."
+                where_text = f"{n_defects} localized anomaly region(s) were detected across the component surface."
             else:
                 where_text = "Surface anomaly pattern recorded with elevated pixel intensity across the component boundary."
-            why_text = f"PatchCore extracts 448-dimensional multi-scale patch representations from ResNet-18 Layers 1, 2, and 3. In defective regions, Euclidean distance to the nearest nominal vectors in the {cat_data['name']} coreset memory bank departed significantly from the learned distribution manifold."
+            why_text = f"PatchCore extracts 448-dimensional multi-scale patch representations from ResNet-18 Layers 1–3. In anomalous regions, feature distance to the nearest nominal vectors in the {cat_data['name']} coreset memory bank departed significantly from the learned normal manifold."
         else:
-            what_text = f"Optical scan yielded an anomaly score of <b>{score:.4f}</b>, safely below the calibrated nominal threshold of <b>{th:.4f}</b> (Decision Margin: <b style='color:#15803D;'>{margin:.4f}</b>). Zero localized clusters exceeded the pixel detection threshold ($T_{{pixel}} = {p_th:.4f}$)."
+            what_text = f"Optical scan yielded an anomaly score of {score:.4f}, safely below the calibrated nominal threshold of {th:.4f} (Decision margin: {margin:.4f})."
             where_text = "No anomalous regions detected. Multi-scale patch representations across all spatial grid positions conform to nominal reference geometry."
             why_text = f"All 448-dimensional patch representations map tightly within the high-density manifold of normal feature vectors established by defect-free {cat_data['name']} training units."
 
         render_html(f"""
-        <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin-bottom: 12px;">{sec1_header}</div>
-            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; color: #171717; line-height: 1.55;">
-                <div><b>• What was detected:</b> {what_text}</div>
-                <div><b>• Where was it detected:</b> {where_text}</div>
-                <div><b>• Why the model triggered:</b> {why_text}</div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
+            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px;">{sec1_header}</div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
+                <div><span style="font-weight: 600; color: var(--text-primary);">• What was detected:</span> {what_text}</div>
+                <div><span style="font-weight: 600; color: var(--text-primary);">• Where was it detected:</span> {where_text}</div>
+                <div><span style="font-weight: 600; color: var(--text-primary);">• Why the model triggered:</span> {why_text}</div>
             </div>
         </div>
         """)
 
         # ---------------------------------------------------------------------
-        # NEW SECTION 2: IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)
+        # SECTION 2: IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)
         # ---------------------------------------------------------------------
-        usability_badge = (
-            '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: #FEF2F2; color: #B91C1C; font-weight: 700; font-size: 0.74rem; border: 1px solid #FECACA; letter-spacing: 0.04em;">REQUIRES REVIEW</span>'
-            if is_defective
-            else '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: #F0FDF4; color: #15803D; font-weight: 700; font-size: 0.74rem; border: 1px solid #BBF7D0; letter-spacing: 0.04em;">PASSES VISUAL INSPECTION</span>'
-        )
-
         if is_defective:
-            usability_narrative = f"""
-            <b>Visual Detection vs. Engineering Usability:</b><br>
-            The VisionInspect optical inspection system models structural and surface concordance against nominal reference parts. A classification of <b>DEFECTIVE</b> indicates that visual/surface anomalies exceed calibrated optical tolerances (&Delta; = +{margin:.4f}).<br><br>
-            In industrial quality engineering, optical anomalies do not automatically indicate complete functional failure. Physical fitness for service depends on application-specific engineering acceptance criteria:
-            <ul style="margin: 6px 0 6px 18px; padding: 0;">
-                <li><b>Cosmetic / Non-critical:</b> Minor superficial scuffs, texture variations, or non-functional edge flaws may be acceptable for secondary assemblies or non-aesthetic applications.</li>
-                <li><b>Functional / Structural:</b> Cracks, punctures, broken teeth, bent leads, or thread deformations impair physical durability, hermetic seals, or mechanical engagement.</li>
-            </ul>
-            <b>Recommended Action:</b> Flag component for secondary Quality Assurance (QA) disposition review against engineering specification standards.
-            """
+            usability_badge = '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: var(--danger-bg); color: var(--danger); font-weight: 700; font-size: 0.72rem; border: 1px solid #FECACA; letter-spacing: 0.04em;">REQUIRES REVIEW</span>'
+            usability_desc = "VisionInspect detected a visual deviation that requires secondary quality assessment. The anomaly detector identifies deviations from the learned normal pattern; it does not independently certify physical safety or fitness for use."
+            insp_status_html = '<span style="color: var(--danger); font-weight: 700;">DEFECTIVE</span>'
+            usab_status_html = '<span style="color: var(--danger); font-weight: 700;">REQUIRES REVIEW</span>'
+            action_html = '<span style="color: var(--text-primary); font-weight: 500;">Secondary QA disposition review against engineering specifications</span>'
         else:
-            usability_narrative = f"""
-            <b>Visual Conformance Assessment:</b><br>
-            The component satisfies visual nominal tolerances with zero localized anomaly clusters exceeding detection thresholds (&Delta; = {margin:.4f}). Multi-scale patch representations conform to the calibrated memory bank of acceptable production units.<br><br>
-            <b>Recommended Action:</b> Component clears the optical quality gate. Standard downstream functional and mechanical testing may proceed.
-            """
+            usability_badge = '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: var(--success-bg); color: var(--success); font-weight: 700; font-size: 0.72rem; border: 1px solid #BBF7D0; letter-spacing: 0.04em;">PASSES VISUAL INSPECTION</span>'
+            usability_desc = "No significant visual deviation from the learned normal pattern was detected under the configured inspection criteria. Multi-scale patch representations conform to the calibrated memory bank."
+            insp_status_html = '<span style="color: var(--success); font-weight: 700;">NORMAL</span>'
+            usab_status_html = '<span style="color: var(--success); font-weight: 700;">PASSES VISUAL INSPECTION</span>'
+            action_html = '<span style="color: var(--text-primary); font-weight: 500;">Component clears optical quality gate. Proceed to standard operational testing</span>'
 
         render_html(f"""
-        <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase;">IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)</span>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)</span>
                 {usability_badge}
             </div>
-            <div style="font-size: 0.84rem; color: #171717; line-height: 1.6;">
-                {usability_narrative}
+            <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 14px;">
+                {usability_desc}
             </div>
-            <div style="font-size: 0.72rem; color: #8E8E93; margin-top: 14px; border-top: 1px solid #F0F0EE; padding-top: 10px; line-height: 1.4;">
-                <b>Engineering Notice:</b> Optical inspection evaluates surface and geometric concordance against the nominal reference manifold. Structural load capacity, hermetic integrity, or electrical performance must be validated using physical QA test procedures.
+            <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+                    <span style="color: var(--text-secondary);">Inspection status:</span>
+                    {insp_status_html}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+                    <span style="color: var(--text-secondary);">Usability status:</span>
+                    {usab_status_html}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-secondary);">Recommended action:</span>
+                    {action_html}
+                </div>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
+                Engineering Notice: Optical inspection evaluates surface and geometric concordance against the nominal reference manifold. Physical fitness for service depends on application-specific mechanical and electrical specifications.
             </div>
         </div>
         """)
@@ -910,7 +941,7 @@ elif st.session_state["nav_page"] == "Inspect":
         # LOCALIZED REGIONS BREAKDOWN (IF DEFECTIVE)
         # ---------------------------------------------------------------------
         if is_defective and regs:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin: 16px 0 8px 0;'>LOCALIZED ANOMALY REGIONS</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 16px 0 8px 0;'>LOCALIZED ANOMALY REGIONS</div>")
             reg_cols = st.columns(min(4, len(regs)))
             for r_idx, reg in enumerate(regs[:4]):
                 with reg_cols[r_idx]:
@@ -920,11 +951,11 @@ elif st.session_state["nav_page"] == "Inspect":
                     r_score = reg.get("score", 0.0)
                     bbox = reg.get("bbox", [0, 0, 0, 0])
                     render_html(f"""
-                    <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 12px 14px; font-size: 0.78rem;">
-                        <div style="font-weight: 700; color: #B91C1C;">{lbl}</div>
-                        <div style="color: #6B6B6B; margin-top: 2px;">{intensity}</div>
-                        <div style="font-size: 0.72rem; color: #8E8E93; margin-top: 4px;">Area: {area_px} px • Score: {r_score:.4f}</div>
-                        <div style="font-size: 0.70rem; color: #A1A1AA; margin-top: 2px;">Box: [{bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]}]</div>
+                    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-size: 0.78rem;">
+                        <div style="font-weight: 700; color: var(--danger);">{lbl}</div>
+                        <div style="color: var(--text-secondary); margin-top: 2px;">{intensity}</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Area: {area_px} px • Score: {r_score:.4f}</div>
+                        <div style="font-size: 0.70rem; color: var(--text-muted); margin-top: 2px;">Box: [{bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]}]</div>
                     </div>
                     """)
 
@@ -943,8 +974,8 @@ elif st.session_state["nav_page"] == "Inspect":
             - **Unique Request ID:** `{res.get('request_id', 'N/A')}`
             """)
 
-        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
-        if st.button("← Inspect Another Image", key="res_bottom_inspect_btn", use_container_width=True):
+        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+        if st.button("Inspect Another Image →", key="res_bottom_inspect_btn", type="primary", use_container_width=True):
             purge_inspection()
             st.rerun()
 
@@ -958,40 +989,40 @@ elif st.session_state["nav_page"] == "Inspect":
         with left_col:
             render_html("""
             <div class="hero-eyebrow">INSPECT COMPONENT</div>
-            <h2 style="font-size: 1.9rem; font-weight: 700; color: #171717; margin: 0 0 10px 0; letter-spacing: -0.025em; line-height: 1.15;">
+            <h2 style="font-size: 1.85rem; font-weight: 700; color: var(--text-primary); margin: 0 0 8px 0; letter-spacing: -0.025em; line-height: 1.15;">
                 Upload Your Image
             </h2>
-            <p style="font-size: 0.86rem; color: #6B6B6B; line-height: 1.55; margin-bottom: 24px;">
-                AI-powered visual inspection for detecting and localizing manufacturing defects with sub-pixel precision.
+            <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
+                Upload an image of the component you want to inspect. VisionInspect analyzes it for visual deviations from the learned normal pattern.
             </p>
             
-            <div style="display: flex; flex-direction: column; gap: 18px; border-top: 1px solid #E5E5E2; padding-top: 20px;">
-                <div style="display: flex; gap: 12px;">
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">01</span>
+            <div style="display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--border); padding-top: 16px;">
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-primary); min-width: 20px;">01</span>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">Select Component</div>
-                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Choose target component from the catalog on the right.</div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Select Component</div>
+                        <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px;">Choose target component from the catalog on the right.</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 12px;">
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">02</span>
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-primary); min-width: 20px;">02</span>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">Upload Image</div>
-                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Acquire optical sensor image or select a verified test sample.</div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Upload Image</div>
+                        <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px;">Acquire optical sensor image or select a verified test sample.</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 12px;">
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">03</span>
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <span style="font-size: 0.72rem; font-weight: 700; min-width: 20px; color: var(--text-primary);">03</span>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">Analyze</div>
-                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Deep multi-scale 448D feature comparison against nominal memory bank.</div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Analyze</div>
+                        <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px;">Deep multi-scale 448D feature comparison against nominal memory bank.</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 12px;">
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">04</span>
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <span style="font-size: 0.72rem; font-weight: 700; min-width: 20px; color: var(--text-primary);">04</span>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">View Results</div>
-                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Review anomaly heatmap, localized bounding boxes, and usability review.</div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">View Results</div>
+                        <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px;">Review anomaly heatmap, localized bounding boxes, and usability review.</div>
                     </div>
                 </div>
             </div>
@@ -1004,7 +1035,7 @@ elif st.session_state["nav_page"] == "Inspect":
                 b64_loaded = base64.b64encode(img_bytes).decode("utf-8")
 
                 render_html(f"""
-                <div class="hero-visual-frame" style="min-height: 380px; padding: 24px 20px;">
+                <div class="hero-visual-frame" style="min-height: 360px; padding: 20px;">
                     <div class="corner-bracket corner-tl"></div>
                     <div class="corner-bracket corner-tr"></div>
                     <div class="corner-bracket corner-bl"></div>
@@ -1013,15 +1044,23 @@ elif st.session_state["nav_page"] == "Inspect":
                         <span>TARGET: {cat_data['name'].upper()} ({cat_data['label'].upper()})</span>
                         <span>{iw} × {ih} PX</span>
                     </div>
-                    <img src="data:image/png;base64,{b64_loaded}" style="max-height: 310px; max-width: 90%; object-fit: contain; margin: 24px 0; border-radius: 4px;" />
+                    <img src="data:image/png;base64,{b64_loaded}" style="max-height: 290px; max-width: 90%; object-fit: contain; margin: 24px 0; border-radius: 4px;" />
                     <div class="visual-bottom-meta">
                         <span>FILE: {fname}</span>
                         <span>READY FOR INSPECTION</span>
                     </div>
                 </div>
+                
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 0.68rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Image Selected</div>
+                        <div style="font-size: 0.84rem; font-weight: 600; color: var(--text-primary); margin-top: 1px;">{fname}</div>
+                    </div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">{iw} × {ih} px</div>
+                </div>
                 """)
 
-                st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 btn_c1, btn_c2 = st.columns([2.0, 1.2])
                 with btn_c1:
                     if st.button("ANALYZE IMAGE →", key="inspect_center_analyze_btn", type="primary", use_container_width=True):
@@ -1035,10 +1074,10 @@ elif st.session_state["nav_page"] == "Inspect":
             else:
                 # Before upload: Large clean dropzone + demo sample option
                 render_html("""
-                <div style="background: #FFFFFF; border: 1.5px dashed #D4D4D0; border-radius: 8px; padding: 42px 24px; text-align: center;">
-                    <div style="font-size: 2.0rem; color: #171717; margin-bottom: 8px;">⌖</div>
-                    <div style="font-size: 1.1rem; font-weight: 600; color: #171717; margin-bottom: 4px;">Drop an image here</div>
-                    <div style="font-size: 0.76rem; color: #8E8E93; margin-bottom: 16px;">PNG, JPG, WEBP • Industrial component optical scan</div>
+                <div style="background: var(--surface); border: 1.5px dashed var(--border-strong); border-radius: 8px; padding: 36px 20px; text-align: center; margin-bottom: 8px;">
+                    <div style="font-size: 1.8rem; color: var(--text-primary); margin-bottom: 6px;">⌖</div>
+                    <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Drop an image here</div>
+                    <div style="font-size: 0.76rem; color: var(--text-secondary);">PNG, JPG, WEBP • Industrial component optical scan</div>
                 </div>
                 """)
 
@@ -1055,10 +1094,10 @@ elif st.session_state["nav_page"] == "Inspect":
                     st.rerun()
 
                 render_html("""
-                <div style="display: flex; align-items: center; text-align: center; margin: 18px 0 14px 0;">
-                    <div style="flex: 1; border-bottom: 1px solid #E5E5E2;"></div>
-                    <span style="padding: 0 10px; font-size: 0.72rem; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.06em;">Or Choose Verified Sample</span>
-                    <div style="flex: 1; border-bottom: 1px solid #E5E5E2;"></div>
+                <div style="display: flex; align-items: center; text-align: center; margin: 16px 0 12px 0;">
+                    <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
+                    <span style="padding: 0 10px; font-size: 0.70rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Or Choose Verified Sample</span>
+                    <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
                 </div>
                 """)
 
@@ -1085,7 +1124,7 @@ elif st.session_state["nav_page"] == "Inspect":
         with right_col:
             render_html("""
             <div class="hero-eyebrow">SELECT COMPONENT</div>
-            <div style="font-size: 0.78rem; color: #6B6B6B; margin-bottom: 14px;">Active model catalog:</div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 14px;">Active model catalog:</div>
             """)
 
             for c_key, c_info in CATEGORIES.items():
@@ -1094,19 +1133,31 @@ elif st.session_state["nav_page"] == "Inspect":
 
                 c_thumb_col, c_btn_col = st.columns([1.0, 3.0], gap="small")
                 with c_thumb_col:
+                    border_style = "1.5px solid var(--dark)" if is_active else "1px solid var(--border)"
                     render_html(f"""
-                    <div style="width: 44px; height: 44px; border-radius: 6px; overflow: hidden; border: 1.5px solid {'#171717' if is_active else '#E5E5E2'}; background: #FFFFFF; display: flex; align-items: center; justify-content: center; margin-top: 2px;">
+                    <div style="width: 44px; height: 44px; border-radius: 6px; overflow: hidden; border: {border_style}; background: var(--surface); display: flex; align-items: center; justify-content: center; margin-top: 2px;">
                         <img src="data:image/jpeg;base64,{thumb_b64}" style="width: 100%; height: 100%; object-fit: cover;" />
                     </div>
                     """)
                 with c_btn_col:
                     label_text = f"✔ {c_info['name']}" if is_active else c_info['name']
-                    if st.button(label_text, key=f"right_col_cat_{c_key}", type="primary" if is_active else "secondary", use_container_width=True):
+                    if is_active:
+                        render_html(f"""
+                        <style>
+                            div[data-testid="stHorizontalBlock"] button[key="right_col_cat_{c_key}"] {{
+                                border: 1.5px solid var(--dark) !important;
+                                background-color: var(--surface) !important;
+                                color: var(--text-primary) !important;
+                                font-weight: 600 !important;
+                            }}
+                        </style>
+                        """)
+                    if st.button(label_text, key=f"right_col_cat_{c_key}", type="secondary", use_container_width=True):
                         if c_key != active_cat:
                             purge_inspection(new_category=c_key)
                             st.rerun()
                     render_html(f"""
-                    <div style="font-size: 0.68rem; color: #8E8E93; margin-top: -6px; margin-bottom: 12px; line-height: 1.2;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: -6px; margin-bottom: 12px; line-height: 1.2;">
                         {c_info['label']}
                     </div>
                     """)
@@ -1115,21 +1166,21 @@ elif st.session_state["nav_page"] == "Inspect":
     # RECENT INSPECTIONS (MINIMAL LIST)
     # -------------------------------------------------------------------------
     if st.session_state["recent_inspections"]:
-        st.markdown("<hr style='margin: 2.0rem 0 1.2rem 0; border: none; border-bottom: 1px solid #E5E5E2;' />", unsafe_allow_html=True)
-        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #8E8E93; text-transform: uppercase; margin-bottom: 8px;'>RECENT INSPECTIONS (SESSION)</div>")
+        st.markdown("<hr style='margin: 1.8rem 0 1.0rem 0; border: none; border-bottom: 1px solid var(--border);' />", unsafe_allow_html=True)
+        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>RECENT INSPECTIONS (SESSION)</div>")
         
         hist_rows = []
         for item in st.session_state["recent_inspections"][:4]:
-            badge_color = "#B91C1C" if item["status"] == "DEFECTIVE" else "#15803D"
+            badge_color = "var(--danger)" if item["status"] == "DEFECTIVE" else "var(--success)"
             hist_rows.append(
-                f"<div style='display:flex; justify-content:space-between; padding: 6px 0; border-bottom: 1px solid #F0F0EE; font-size: 0.80rem;'>"
-                f"<span><b>#{item['id']}</b> &nbsp; {item['category'].title()} &nbsp;•&nbsp; <code>{item['filename'][:20]}</code></span>"
+                f"<div style='display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.80rem;'>"
+                f"<span><span style='font-weight:600; color:var(--text-primary);'>#{item['id']}</span> &nbsp; {item['category'].title()} &nbsp;•&nbsp; <code style='font-size:0.75rem; color:var(--text-secondary);'>{item['filename'][:20]}</code></span>"
                 f"<span style='color:{badge_color}; font-weight:700;'>{item['status']}</span>"
-                f"<span>Score: {item['score']:.4f}</span>"
-                f"<span>Latency: {item['time_s']:.2f}s</span>"
+                f"<span style='color:var(--text-secondary);'>Score: {item['score']:.4f}</span>"
+                f"<span style='color:var(--text-muted);'>Latency: {item['time_s']:.2f}s</span>"
                 f"</div>"
             )
-        render_html(f"<div style='background:#FFFFFF; border:1px solid #E5E5E2; border-radius:6px; padding:10px 16px;'>{''.join(hist_rows)}</div>")
+        render_html(f"<div style='background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 16px;'>{''.join(hist_rows)}</div>")
 
 
 # =============================================================================
@@ -1138,8 +1189,8 @@ elif st.session_state["nav_page"] == "Inspect":
 elif st.session_state["nav_page"] == "Models":
     render_html("""
     <div class="hero-eyebrow">SYSTEM ARCHITECTURE</div>
-    <h1 style="font-size: 2.2rem; font-weight: 700; color: #171717; margin: 0 0 12px 0;">PatchCore v2.3 Architecture</h1>
-    <p style="font-size: 0.95rem; color: #6B6B6B; max-width: 680px; line-height: 1.5; margin-bottom: 24px;">
+    <h1 style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 12px 0;">PatchCore v2.3 Architecture</h1>
+    <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 680px; line-height: 1.5; margin-bottom: 24px;">
         VisionInspect operates on an unsupervised memory bank density paradigm. Feature representations are extracted from deep ResNet-18 layers, sub-sampled via greedy coreset selection, and tested without training on defect images.
     </p>
     """)
@@ -1148,16 +1199,16 @@ elif st.session_state["nav_page"] == "Models":
 
     with m_col1:
         render_html("""
-        <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 20px; height: 100%;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin-bottom: 10px;">CORE PIPELINE STAGES</div>
-            <div style="font-size: 0.82rem; color: #171717; line-height: 1.8;">
-                <b>1. Multi-Scale Feature Extraction</b><br>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; height: 100%;">
+            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">CORE PIPELINE STAGES</div>
+            <div style="font-size: 0.82rem; color: var(--text-primary); line-height: 1.8;">
+                <b style="color: var(--text-primary);">1. Multi-Scale Feature Extraction</b><br>
                 ResNet-18 Layers 1, 2, and 3 are extracted and spatially bilinearly interpolated onto a uniform 64×64 grid, producing 448-dimensional localized patch descriptors.<br><br>
-                <b>2. Coreset Memory Bank Subsampling</b><br>
+                <b style="color: var(--text-primary);">2. Coreset Memory Bank Subsampling</b><br>
                 Greedy minimax coreset selection retains 10% of nominal feature vectors while maintaining complete coverage of the normal representation manifold.<br><br>
-                <b>3. Nearest-Neighbor Anomaly Scoring</b><br>
+                <b style="color: var(--text-primary);">3. Nearest-Neighbor Anomaly Scoring</b><br>
                 Test image patches are scored via exact Euclidean nearest-neighbor distance against the category's nominal memory bank.<br><br>
-                <b>4. Dual-Gated Decision Rule</b><br>
+                <b style="color: var(--text-primary);">4. Dual-Gated Decision Rule</b><br>
                 A component is defective if and only if its anomaly score exceeds T_image AND a morphological connected component exceeds min_area.
             </div>
         </div>
@@ -1165,11 +1216,11 @@ elif st.session_state["nav_page"] == "Models":
 
     with m_col2:
         render_html("""
-        <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 20px; height: 100%;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin-bottom: 10px;">CATEGORY MODELS & THRESHOLDS</div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; height: 100%;">
+            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">CATEGORY MODELS & THRESHOLDS</div>
             <table style="width: 100%; border-collapse: collapse; font-size: 0.80rem; margin-top: 8px;">
                 <thead>
-                    <tr style="border-bottom: 1px solid #E5E5E2; text-align: left; color: #8E8E93;">
+                    <tr style="border-bottom: 1px solid var(--border); text-align: left; color: var(--text-secondary);">
                         <th style="padding: 6px 0;">Category</th>
                         <th>T_image</th>
                         <th>T_pixel</th>
@@ -1177,32 +1228,32 @@ elif st.session_state["nav_page"] == "Models":
                     </tr>
                 </thead>
                 <tbody>
-                    <tr style="border-bottom: 1px solid #F0F0EE;">
-                        <td style="padding: 8px 0; font-weight: 600;">Bottle</td>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Bottle</td>
                         <td>1.50</td>
                         <td>1.40</td>
                         <td>Active (p75/mean)</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #F0F0EE;">
-                        <td style="padding: 8px 0; font-weight: 600;">Leather</td>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Leather</td>
                         <td>2.20</td>
                         <td>2.71</td>
                         <td>Disabled (Texture)</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #F0F0EE;">
-                        <td style="padding: 8px 0; font-weight: 600;">Transistor</td>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Transistor</td>
                         <td>3.525</td>
                         <td>2.822</td>
                         <td>Presence Gate</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #F0F0EE;">
-                        <td style="padding: 8px 0; font-weight: 600;">Zipper</td>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Zipper</td>
                         <td>1.47</td>
                         <td>0.91</td>
                         <td>Active (mean)</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px 0; font-weight: 600;">Screw</td>
+                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Screw</td>
                         <td>2.28</td>
                         <td>2.00</td>
                         <td>Active (mean)</td>
@@ -1219,8 +1270,8 @@ elif st.session_state["nav_page"] == "Models":
 elif st.session_state["nav_page"] == "About":
     render_html("""
     <div class="hero-eyebrow">ABOUT VISIONINSPECT</div>
-    <h1 style="font-size: 2.2rem; font-weight: 700; color: #171717; margin: 0 0 12px 0;">Autonomous Quality Inspection</h1>
-    <p style="font-size: 0.95rem; color: #6B6B6B; max-width: 680px; line-height: 1.5; margin-bottom: 24px;">
+    <h1 style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 12px 0;">Autonomous Quality Inspection</h1>
+    <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 680px; line-height: 1.5; margin-bottom: 24px;">
         Designed for industrial manufacturing lines where defective samples are scarce or unavailable. VisionInspect models normal product geometry and flags any statistical departure from perfection.
     </p>
     """)
