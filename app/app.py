@@ -141,6 +141,22 @@ def purge_inspection(new_category: Optional[str] = None):
 def render_html(content: str):
     st.markdown(textwrap.dedent(content).strip(), unsafe_allow_html=True)
 
+# Cached thumbnail helper for instant component catalog rendering
+@st.cache_data
+def get_thumbnail_b64(img_path: str) -> str:
+    p = Path(img_path)
+    if not p.exists():
+        return ""
+    try:
+        with Image.open(p) as im:
+            im_rgb = im.convert("RGB")
+            im_rgb.thumbnail((96, 96), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            im_rgb.save(buf, format="JPEG", quality=85)
+            return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception:
+        return ""
+
 # -----------------------------------------------------------------------------
 # MINIMALIST INDUSTRIAL DESIGN SYSTEM (APPLE / INDUSTRIAL LAB AESTHETIC)
 # -----------------------------------------------------------------------------
@@ -501,8 +517,9 @@ with nav_col2:
                 st.rerun()
 
 with nav_col3:
-    if st.button("Start Inspection", key="nav_start_btn", type="primary", use_container_width=True):
+    if st.button("New Inspection →", key="nav_start_btn", type="primary", use_container_width=True):
         st.session_state["nav_page"] = "Inspect"
+        purge_inspection()
         st.rerun()
 
 st.markdown("<hr style='margin: 0.2rem 0 1.4rem 0; border: none; border-bottom: 1px solid #E5E5E2;' />", unsafe_allow_html=True)
@@ -627,38 +644,11 @@ if st.session_state["nav_page"] == "Home":
 
 
 # =============================================================================
-# PAGE 2: INSPECT PAGE (CLEAN WORKFLOW: SELECT -> UPLOAD -> ANALYZE)
+# PAGE 2: INSPECT PAGE (3-COLUMN WORKFLOW + RESULT INSPECTION REPORT)
 # =============================================================================
 elif st.session_state["nav_page"] == "Inspect":
     active_cat = st.session_state["selected_category"]
     cat_data = CATEGORIES[active_cat]
-
-    # Sub-header bar
-    top_nav1, top_nav2 = st.columns([1.2, 3.8])
-    with top_nav1:
-        if st.button("← Back to Overview", key="inspect_back_btn"):
-            st.session_state["nav_page"] = "Home"
-            st.rerun()
-
-    with top_nav2:
-        inspect_categories = ["Bottle", "Leather", "Transistor", "Zipper", "Screw"]
-        cur_inspect_title = active_cat.title()
-        if cur_inspect_title not in inspect_categories:
-            cur_inspect_title = "Bottle"
-
-        sel_inspect_pill = st.pills(
-            "Inspect Category",
-            options=inspect_categories,
-            default=cur_inspect_title,
-            key="inspect_category_pills_nav",
-            label_visibility="collapsed"
-        )
-
-        if sel_inspect_pill and sel_inspect_pill.lower() != active_cat:
-            purge_inspection(new_category=sel_inspect_pill.lower())
-            st.rerun()
-
-    st.markdown("<hr style='margin: 0.8rem 0 1.2rem 0; border: none; border-bottom: 1px solid #E5E5E2;' />", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
     # STATE A: SCANNING IN PROGRESS
@@ -668,23 +658,32 @@ elif st.session_state["nav_page"] == "Inspect":
         b64_scan = base64.b64encode(scan_bytes).decode("utf-8")
 
         render_html("""
-        <div style="text-align: center; margin-bottom: 14px;">
+        <div style="text-align: center; margin-bottom: 20px;">
             <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; color: #EF4444; text-transform: uppercase;">SCANNING IN PROGRESS</div>
-            <div style="font-size: 1.4rem; font-weight: 700; color: #171717; margin-top: 4px;">Analyzing Industrial Component</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #171717; margin-top: 4px;">Analyzing Industrial Component</div>
+            <div style="font-size: 0.82rem; color: #6B6B6B; margin-top: 4px;">Precision optical anomaly detection with sub-pixel localization</div>
         </div>
         """)
 
         render_html(f"""
-        <div class="scan-container">
+        <div class="scan-container" style="max-width: 520px; margin: 0 auto;">
             <div class="corner-bracket corner-tl"></div>
             <div class="corner-bracket corner-tr"></div>
             <div class="corner-bracket corner-bl"></div>
             <div class="corner-bracket corner-br"></div>
             <div class="scan-laser"></div>
-            <img src="data:image/png;base64,{b64_scan}" style="width: 100%; display: block; filter: contrast(1.02);" />
+            <img src="data:image/png;base64,{b64_scan}" style="width: 100%; display: block; filter: contrast(1.02); border-radius: 4px;" />
+            <div style="position: absolute; bottom: 12px; left: 16px; right: 16px; background: rgba(23, 23, 23, 0.85); backdrop-filter: blur(4px); padding: 8px 14px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; font-size: 0.72rem; font-weight: 600;">
+                <span>● SCANNING ACTIVE</span>
+                <span>RESNET-18 (448D) // CORESET MEMORY</span>
+            </div>
         </div>
-        <div style="text-align: center; margin-top: 14px; font-size: 0.78rem; color: #6B6B6B;">
-            Extracting ResNet-18 Layers 1–3 (448D) • Querying {cat_data['name']} Coreset Memory Bank • Localizing Anomaly Map
+
+        <div style="max-width: 520px; margin: 18px auto 0 auto; background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 12px 18px; font-size: 0.76rem; color: #6B6B6B; display: flex; justify-content: space-between;">
+            <span><b>01</b> Scanning Component</span>
+            <span><b>02</b> Extracting 448D Features</span>
+            <span><b>03</b> Anomaly Distance</span>
+            <span><b>04</b> Morphological Gate</span>
         </div>
         """)
 
@@ -720,7 +719,7 @@ elif st.session_state["nav_page"] == "Inspect":
             st.rerun()
 
     # -------------------------------------------------------------------------
-    # STATE B: INSPECTION RESULT VIEW (FULL-WIDTH, HIGH-IMPACT)
+    # STATE B: INSPECTION RESULT VIEW (PROFESSIONAL REPORT)
     # -------------------------------------------------------------------------
     elif st.session_state["current_inspection"] is not None:
         res = st.session_state["current_inspection"]
@@ -728,47 +727,50 @@ elif st.session_state["nav_page"] == "Inspect":
         status = res.get("status", "NORMAL")
         score = res.get("anomaly_score", 0.0)
         th = res.get("image_threshold", 0.0)
+        p_th = res.get("pixel_threshold", 0.0)
         margin = res.get("decision_margin", score - th)
         n_defects = res.get("num_defects", 0)
         latency_ms = res.get("inference_time_ms", 180.0)
         explanation = res.get("explanation", "")
         why_explanation = res.get("why_explanation", "")
+        regs = res.get("localized_regions", [])
 
-        # Status Header
-        res_h1, res_h2 = st.columns([3.5, 1.2])
-        with res_h1:
-            render_html("<div style='font-size: 0.72rem; font-weight: 600; letter-spacing: 0.10em; color: #8E8E93; text-transform: uppercase;'>INSPECTION RESULT</div>")
-            if is_defective:
-                render_html(f"""
-                <div style="font-size: 2.2rem; font-weight: 800; color: #B91C1C; letter-spacing: -0.02em; line-height: 1.1;">DEFECTIVE</div>
-                <div style="font-size: 0.95rem; color: #404040; margin-top: 4px;">{explanation}</div>
-                """)
-            elif score > th and n_defects == 0:
-                render_html(f"""
-                <div style="font-size: 2.2rem; font-weight: 800; color: #B45309; letter-spacing: -0.02em; line-height: 1.1;">NORMAL (ELEVATED SIGNAL)</div>
-                <div style="font-size: 0.95rem; color: #404040; margin-top: 4px;">{explanation}</div>
-                """)
-            else:
-                render_html(f"""
-                <div style="font-size: 2.2rem; font-weight: 800; color: #15803D; letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
-                <div style="font-size: 0.95rem; color: #404040; margin-top: 4px;">{explanation}</div>
-                """)
-
-        with res_h2:
-            if st.button("Inspect Another Component", key="inspect_another_btn", use_container_width=True):
+        # Navigation & Status Header
+        top_h1, top_h2 = st.columns([3.5, 1.3])
+        with top_h1:
+            if st.button("← Back to Inspect", key="res_back_btn"):
+                purge_inspection()
+                st.rerun()
+        with top_h2:
+            if st.button("Inspect Another Image →", key="res_inspect_another_btn", type="primary", use_container_width=True):
                 purge_inspection()
                 st.rerun()
 
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+        render_html("<div style='font-size: 0.72rem; font-weight: 600; letter-spacing: 0.10em; color: #8E8E93; text-transform: uppercase;'>INSPECTION RESULT</div>")
+
+        if is_defective:
+            subtext = f"{n_defects} confirmed defect region(s) localized with decision margin +{margin:.4f} exceeding nominal image threshold." if n_defects > 0 else f"Elevated anomaly score (+{margin:.4f}) exceeding nominal image threshold."
+            render_html(f"""
+            <div style="font-size: 2.4rem; font-weight: 800; color: #B91C1C; letter-spacing: -0.02em; line-height: 1.1;">DEFECTIVE</div>
+            <div style="font-size: 0.95rem; color: #404040; margin-top: 4px;">{subtext}</div>
+            """)
+        else:
+            render_html(f"""
+            <div style="font-size: 2.4rem; font-weight: 800; color: #15803D; letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
+            <div style="font-size: 0.95rem; color: #404040; margin-top: 4px;">Zero anomaly clusters detected. Component matches nominal distribution within calibrated thresholds (Margin: {margin:.4f}).</div>
+            """)
+
+        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
         # ---------------------------------------------------------------------
         # MAIN RESULT VISUAL (HUGE THREE-PANEL SECTION)
         # ---------------------------------------------------------------------
         v_col1, v_col2, v_col3 = st.columns(3, gap="medium")
 
-        # 01 ORIGINAL
+        # 01 ORIGINAL IMAGE
         with v_col1:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; margin-bottom: 6px;'>01 &nbsp; ORIGINAL</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; margin-bottom: 6px;'>01 &nbsp; ORIGINAL IMAGE</div>")
             if st.session_state["uploaded_image_data"]:
                 _, orig_bytes, _ = st.session_state["uploaded_image_data"]
                 st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
@@ -782,17 +784,17 @@ elif st.session_state["nav_page"] == "Inspect":
                 st.image(Image.open(io.BytesIO(base64.b64decode(hm_b64))), use_container_width=True)
                 render_html("""
                 <div class="minimal-legend">
-                    <span>Nominal</span>
+                    <span>Low (Nominal)</span>
                     <div class="legend-gradient"></div>
-                    <span>Anomaly</span>
+                    <span>High (Anomaly)</span>
                 </div>
                 """)
             else:
                 st.info("Anomaly map not available.")
 
-        # 03 LOCALIZATION
+        # 03 DEFECT LOCALIZATION
         with v_col3:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; margin-bottom: 6px;'>03 &nbsp; LOCALIZATION</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; margin-bottom: 6px;'>03 &nbsp; DEFECT LOCALIZATION</div>")
             vis_b64 = res.get("visualization_base64")
             if is_defective and vis_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(vis_b64))), use_container_width=True)
@@ -804,7 +806,7 @@ elif st.session_state["nav_page"] == "Inspect":
                 render_html("<div style='font-size: 0.68rem; color: #15803D; margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero anomaly clusters detected</div>")
 
         # ---------------------------------------------------------------------
-        # MINIMAL INFORMATION STRIP
+        # METRIC STRIP
         # ---------------------------------------------------------------------
         margin_sign = f"+{margin:.4f}" if margin > 0 else f"{margin:.4f}"
         margin_color = "#B91C1C" if margin > 0 else "#15803D"
@@ -835,21 +837,80 @@ elif st.session_state["nav_page"] == "Inspect":
         """)
 
         # ---------------------------------------------------------------------
-        # WHY THIS RESULT? (ENGINEERING EXPLANATION)
+        # NEW SECTION 1: WHY IS THIS PRODUCT DEFECTIVE / NORMAL?
         # ---------------------------------------------------------------------
+        sec1_header = "WHY IS THIS PRODUCT DEFECTIVE?" if is_defective else "WHY IS THIS PRODUCT NORMAL?"
+        if is_defective:
+            what_text = f"Optical feature extraction yielded an anomaly score of <b>{score:.4f}</b>, exceeding the calibrated nominal threshold of <b>{th:.4f}</b> (Decision Margin: <b style='color:#B91C1C;'>+{margin:.4f}</b>)."
+            if regs:
+                region_coords_str = ", ".join([f"<b>{r.get('label', f'Region {i+1}')}</b> (area: {r.get('area', 0)} px, peak score: {r.get('score', 0.0):.4f})" for i, r in enumerate(regs[:3])])
+                where_text = f"Localized to <b>{n_defects} discrete defect cluster(s)</b>: {region_coords_str}."
+            else:
+                where_text = "Surface anomaly pattern recorded with elevated pixel intensity across the component boundary."
+            why_text = f"PatchCore extracts 448-dimensional multi-scale patch representations from ResNet-18 Layers 1, 2, and 3. In defective regions, Euclidean distance to the nearest nominal vectors in the {cat_data['name']} coreset memory bank departed significantly from the learned distribution manifold."
+        else:
+            what_text = f"Optical scan yielded an anomaly score of <b>{score:.4f}</b>, safely below the calibrated nominal threshold of <b>{th:.4f}</b> (Decision Margin: <b style='color:#15803D;'>{margin:.4f}</b>). Zero localized clusters exceeded the pixel detection threshold ($T_{{pixel}} = {p_th:.4f}$)."
+            where_text = "No anomalous regions detected. Multi-scale patch representations across all spatial grid positions conform to nominal reference geometry."
+            why_text = f"All 448-dimensional patch representations map tightly within the high-density manifold of normal feature vectors established by defect-free {cat_data['name']} training units."
+
         render_html(f"""
-        <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 16px 20px; margin-bottom: 14px;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin-bottom: 4px;">WHY THIS RESULT?</div>
-            <div style="font-size: 0.88rem; color: #171717; line-height: 1.5;">{why_explanation}</div>
+        <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px;">
+            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin-bottom: 12px;">{sec1_header}</div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; color: #171717; line-height: 1.55;">
+                <div><b>• What was detected:</b> {what_text}</div>
+                <div><b>• Where was it detected:</b> {where_text}</div>
+                <div><b>• Why the model triggered:</b> {why_text}</div>
+            </div>
         </div>
         """)
 
         # ---------------------------------------------------------------------
-        # DETECTED REGIONS BREAKDOWN (IF DEFECTIVE)
+        # NEW SECTION 2: IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)
         # ---------------------------------------------------------------------
-        if is_defective and res.get("localized_regions"):
-            regs = res.get("localized_regions", [])
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin: 12px 0 6px 0;'>LOCALIZED ANOMALY REGIONS</div>")
+        usability_badge = (
+            '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: #FEF2F2; color: #B91C1C; font-weight: 700; font-size: 0.74rem; border: 1px solid #FECACA; letter-spacing: 0.04em;">REQUIRES REVIEW</span>'
+            if is_defective
+            else '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: #F0FDF4; color: #15803D; font-weight: 700; font-size: 0.74rem; border: 1px solid #BBF7D0; letter-spacing: 0.04em;">PASSES VISUAL INSPECTION</span>'
+        )
+
+        if is_defective:
+            usability_narrative = f"""
+            <b>Visual Detection vs. Engineering Usability:</b><br>
+            The VisionInspect optical inspection system models structural and surface concordance against nominal reference parts. A classification of <b>DEFECTIVE</b> indicates that visual/surface anomalies exceed calibrated optical tolerances (&Delta; = +{margin:.4f}).<br><br>
+            In industrial quality engineering, optical anomalies do not automatically indicate complete functional failure. Physical fitness for service depends on application-specific engineering acceptance criteria:
+            <ul style="margin: 6px 0 6px 18px; padding: 0;">
+                <li><b>Cosmetic / Non-critical:</b> Minor superficial scuffs, texture variations, or non-functional edge flaws may be acceptable for secondary assemblies or non-aesthetic applications.</li>
+                <li><b>Functional / Structural:</b> Cracks, punctures, broken teeth, bent leads, or thread deformations impair physical durability, hermetic seals, or mechanical engagement.</li>
+            </ul>
+            <b>Recommended Action:</b> Flag component for secondary Quality Assurance (QA) disposition review against engineering specification standards.
+            """
+        else:
+            usability_narrative = f"""
+            <b>Visual Conformance Assessment:</b><br>
+            The component satisfies visual nominal tolerances with zero localized anomaly clusters exceeding detection thresholds (&Delta; = {margin:.4f}). Multi-scale patch representations conform to the calibrated memory bank of acceptable production units.<br><br>
+            <b>Recommended Action:</b> Component clears the optical quality gate. Standard downstream functional and mechanical testing may proceed.
+            """
+
+        render_html(f"""
+        <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase;">IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)</span>
+                {usability_badge}
+            </div>
+            <div style="font-size: 0.84rem; color: #171717; line-height: 1.6;">
+                {usability_narrative}
+            </div>
+            <div style="font-size: 0.72rem; color: #8E8E93; margin-top: 14px; border-top: 1px solid #F0F0EE; padding-top: 10px; line-height: 1.4;">
+                <b>Engineering Notice:</b> Optical inspection evaluates surface and geometric concordance against the nominal reference manifold. Structural load capacity, hermetic integrity, or electrical performance must be validated using physical QA test procedures.
+            </div>
+        </div>
+        """)
+
+        # ---------------------------------------------------------------------
+        # LOCALIZED REGIONS BREAKDOWN (IF DEFECTIVE)
+        # ---------------------------------------------------------------------
+        if is_defective and regs:
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #6B6B6B; text-transform: uppercase; margin: 16px 0 8px 0;'>LOCALIZED ANOMALY REGIONS</div>")
             reg_cols = st.columns(min(4, len(regs)))
             for r_idx, reg in enumerate(regs[:4]):
                 with reg_cols[r_idx]:
@@ -857,11 +918,13 @@ elif st.session_state["nav_page"] == "Inspect":
                     intensity = reg.get("intensity", "Anomaly Region")
                     area_px = reg.get("area", 0)
                     r_score = reg.get("score", 0.0)
+                    bbox = reg.get("bbox", [0, 0, 0, 0])
                     render_html(f"""
-                    <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 10px 14px; font-size: 0.78rem;">
+                    <div style="background: #FFFFFF; border: 1px solid #E5E5E2; border-radius: 6px; padding: 12px 14px; font-size: 0.78rem;">
                         <div style="font-weight: 700; color: #B91C1C;">{lbl}</div>
                         <div style="color: #6B6B6B; margin-top: 2px;">{intensity}</div>
                         <div style="font-size: 0.72rem; color: #8E8E93; margin-top: 4px;">Area: {area_px} px • Score: {r_score:.4f}</div>
+                        <div style="font-size: 0.70rem; color: #A1A1AA; margin-top: 2px;">Box: [{bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]}]</div>
                     </div>
                     """)
 
@@ -875,113 +938,178 @@ elif st.session_state["nav_page"] == "Inspect":
             - **Descriptor Dimension:** 448-dimensional patch representations on a 64×64 spatial grid
             - **Category Model Directory:** `models/{active_cat}/patchcore_v23/`
             - **Calibrated Image Threshold ($T_{{image}}$):** `{th:.4f}`
-            - **Calibrated Pixel Threshold ($T_{{pixel}}$):** `{res.get('pixel_threshold', 0.0):.4f}`
+            - **Calibrated Pixel Threshold ($T_{{pixel}}$):** `{p_th:.4f}`
             - **Decision Rule:** Dual-Gated $[Score > T_{{image}}] \\land [Defect Area \\ge min\\_area]$
             - **Unique Request ID:** `{res.get('request_id', 'N/A')}`
             """)
 
+        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+        if st.button("← Inspect Another Image", key="res_bottom_inspect_btn", use_container_width=True):
+            purge_inspection()
+            st.rerun()
+
     # -------------------------------------------------------------------------
-    # STATE C: IMAGE INPUT SELECTION (UPLOAD OR VERIFIED SAMPLE)
+    # STATE C: 3-COLUMN INSPECTION LAYOUT (LEFT GUIDE | CENTER DROPZONE | RIGHT CATALOG)
     # -------------------------------------------------------------------------
     else:
-        # If an image has been selected/uploaded, display it prominently
-        if st.session_state["uploaded_image_data"]:
-            fname, img_bytes, (iw, ih) = st.session_state["uploaded_image_data"]
-            b64_loaded = base64.b64encode(img_bytes).decode("utf-8")
+        left_col, center_col, right_col = st.columns([1.1, 1.85, 1.15], gap="large")
 
-            col_img, col_actions = st.columns([1.3, 1.0], gap="large")
+        # LEFT COLUMN: Process Guide & Introduction
+        with left_col:
+            render_html("""
+            <div class="hero-eyebrow">INSPECT COMPONENT</div>
+            <h2 style="font-size: 1.9rem; font-weight: 700; color: #171717; margin: 0 0 10px 0; letter-spacing: -0.025em; line-height: 1.15;">
+                Upload Your Image
+            </h2>
+            <p style="font-size: 0.86rem; color: #6B6B6B; line-height: 1.55; margin-bottom: 24px;">
+                AI-powered visual inspection for detecting and localizing manufacturing defects with sub-pixel precision.
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 18px; border-top: 1px solid #E5E5E2; padding-top: 20px;">
+                <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">01</span>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">Select Component</div>
+                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Choose target component from the catalog on the right.</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">02</span>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">Upload Image</div>
+                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Acquire optical sensor image or select a verified test sample.</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">03</span>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">Analyze</div>
+                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Deep multi-scale 448D feature comparison against nominal memory bank.</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #171717; letter-spacing: 0.04em;">04</span>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: #171717;">View Results</div>
+                        <div style="font-size: 0.74rem; color: #6B6B6B; margin-top: 2px;">Review anomaly heatmap, localized bounding boxes, and usability review.</div>
+                    </div>
+                </div>
+            </div>
+            """)
 
-            with col_img:
+        # CENTER COLUMN: Main Visual Focus (Dropzone or Loaded Image)
+        with center_col:
+            if st.session_state["uploaded_image_data"]:
+                fname, img_bytes, (iw, ih) = st.session_state["uploaded_image_data"]
+                b64_loaded = base64.b64encode(img_bytes).decode("utf-8")
+
                 render_html(f"""
-                <div class="hero-visual-frame" style="min-height: 380px;">
+                <div class="hero-visual-frame" style="min-height: 380px; padding: 24px 20px;">
                     <div class="corner-bracket corner-tl"></div>
                     <div class="corner-bracket corner-tr"></div>
                     <div class="corner-bracket corner-bl"></div>
                     <div class="corner-bracket corner-br"></div>
                     <div class="visual-top-meta">
-                        <span>COMPONENT: {cat_data['name'].upper()}</span>
-                        <span>{iw}×{ih} PX</span>
+                        <span>TARGET: {cat_data['name'].upper()} ({cat_data['label'].upper()})</span>
+                        <span>{iw} × {ih} PX</span>
                     </div>
-                    <img src="data:image/png;base64,{b64_loaded}" style="max-height: 320px; max-width: 90%; object-fit: contain; margin: 24px 0;" />
+                    <img src="data:image/png;base64,{b64_loaded}" style="max-height: 310px; max-width: 90%; object-fit: contain; margin: 24px 0; border-radius: 4px;" />
                     <div class="visual-bottom-meta">
                         <span>FILE: {fname}</span>
-                        <span>READY TO INSPECT</span>
+                        <span>READY FOR INSPECTION</span>
                     </div>
                 </div>
                 """)
 
-            with col_actions:
+                st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+                btn_c1, btn_c2 = st.columns([2.0, 1.2])
+                with btn_c1:
+                    if st.button("ANALYZE IMAGE →", key="inspect_center_analyze_btn", type="primary", use_container_width=True):
+                        st.session_state["is_scanning"] = True
+                        st.rerun()
+                with btn_c2:
+                    if st.button("Change Image", key="inspect_center_clear_btn", use_container_width=True):
+                        st.session_state["uploaded_image_data"] = None
+                        st.rerun()
+
+            else:
+                # Before upload: Large clean dropzone + demo sample option
                 render_html("""
-                <div style="padding-top: 24px;">
-                    <div style="font-size: 0.72rem; font-weight: 600; letter-spacing: 0.10em; color: #6B6B6B; text-transform: uppercase;">READY FOR INSPECTION</div>
-                    <h2 style="font-size: 1.8rem; font-weight: 700; color: #171717; margin: 4px 0 12px 0;">Optical Acquisition Ready</h2>
-                    <p style="font-size: 0.88rem; color: #6B6B6B; line-height: 1.5; margin-bottom: 24px;">
-                        The image has been loaded into memory. Click below to execute deep feature comparison against the nominal memory bank.
-                    </p>
+                <div style="background: #FFFFFF; border: 1.5px dashed #D4D4D0; border-radius: 8px; padding: 42px 24px; text-align: center;">
+                    <div style="font-size: 2.0rem; color: #171717; margin-bottom: 8px;">⌖</div>
+                    <div style="font-size: 1.1rem; font-weight: 600; color: #171717; margin-bottom: 4px;">Drop an image here</div>
+                    <div style="font-size: 0.76rem; color: #8E8E93; margin-bottom: 16px;">PNG, JPG, WEBP • Industrial component optical scan</div>
                 </div>
-                """)
-
-                if st.button("ANALYZE IMAGE →", key="analyze_btn", type="primary", use_container_width=True):
-                    st.session_state["is_scanning"] = True
-                    st.rerun()
-
-                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-                if st.button("Clear / Choose Different Image", key="clear_img_btn", use_container_width=True):
-                    purge_inspection()
-                    st.rerun()
-
-        # No image selected yet: Show minimal input options
-        else:
-            in_col1, in_col2 = st.columns([1.1, 1.0], gap="large")
-
-            with in_col1:
-                render_html("""
-                <div style="font-size: 0.72rem; font-weight: 600; letter-spacing: 0.10em; color: #6B6B6B; text-transform: uppercase; margin-bottom: 8px;">INPUT OPTION 01</div>
-                <h3 style="font-size: 1.25rem; font-weight: 700; color: #171717; margin: 0 0 14px 0;">Upload Component Image</h3>
                 """)
 
                 uploaded_file = st.file_uploader(
-                    "Drop an image here or click to browse",
+                    "Choose Image",
                     type=["png", "jpg", "jpeg", "webp"],
-                    key="clean_uploader",
-                    label_visibility="visible"
+                    key="center_file_uploader",
+                    label_visibility="collapsed"
                 )
-
                 if uploaded_file is not None:
                     raw_bytes = uploaded_file.getvalue()
                     pil_im = Image.open(io.BytesIO(raw_bytes))
                     st.session_state["uploaded_image_data"] = (uploaded_file.name, raw_bytes, pil_im.size)
-                    st.session_state["current_inspection"] = None
-                    st.session_state["current_request_id"] = None
                     st.rerun()
 
-            with in_col2:
                 render_html("""
-                <div style="font-size: 0.72rem; font-weight: 600; letter-spacing: 0.10em; color: #6B6B6B; text-transform: uppercase; margin-bottom: 8px;">INPUT OPTION 02</div>
-                <h3 style="font-size: 1.25rem; font-weight: 700; color: #171717; margin: 0 0 14px 0;">Use Verified Demo Sample</h3>
+                <div style="display: flex; align-items: center; text-align: center; margin: 18px 0 14px 0;">
+                    <div style="flex: 1; border-bottom: 1px solid #E5E5E2;"></div>
+                    <span style="padding: 0 10px; font-size: 0.72rem; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.06em;">Or Choose Verified Sample</span>
+                    <div style="flex: 1; border-bottom: 1px solid #E5E5E2;"></div>
+                </div>
                 """)
 
-                sample_labels = [s[0] for s in cat_data["samples"]]
-                chosen_sample = st.selectbox(
-                    f"Select verified {cat_data['name']} evaluation sample:",
-                    options=["-- Select a sample --"] + sample_labels,
-                    key="sample_select_box"
+                sample_options = [s[0] for s in cat_data["samples"]]
+                selected_sample_label = st.selectbox(
+                    f"Verified {cat_data['name']} Samples:",
+                    options=["-- Select evaluation sample --"] + sample_options,
+                    key="center_sample_selectbox"
                 )
-
-                if chosen_sample != "-- Select a sample --":
-                    matched_path = None
-                    for s_label, s_path in cat_data["samples"]:
-                        if s_label == chosen_sample:
-                            matched_path = s_path
+                if selected_sample_label != "-- Select evaluation sample --":
+                    target_path = None
+                    for s_name, s_path in cat_data["samples"]:
+                        if s_name == selected_sample_label:
+                            target_path = s_path
                             break
-                    if matched_path and Path(matched_path).exists():
-                        with open(matched_path, "rb") as f:
+                    if target_path and Path(target_path).exists():
+                        with open(target_path, "rb") as f:
                             s_bytes = f.read()
                         pil_im = Image.open(io.BytesIO(s_bytes))
-                        st.session_state["uploaded_image_data"] = (Path(matched_path).name, s_bytes, pil_im.size)
-                        st.session_state["current_inspection"] = None
-                        st.session_state["current_request_id"] = None
+                        st.session_state["uploaded_image_data"] = (Path(target_path).name, s_bytes, pil_im.size)
                         st.rerun()
+
+        # RIGHT COLUMN: Component Catalog with Visual Thumbnails
+        with right_col:
+            render_html("""
+            <div class="hero-eyebrow">SELECT COMPONENT</div>
+            <div style="font-size: 0.78rem; color: #6B6B6B; margin-bottom: 14px;">Active model catalog:</div>
+            """)
+
+            for c_key, c_info in CATEGORIES.items():
+                is_active = (active_cat == c_key)
+                thumb_b64 = get_thumbnail_b64(c_info["golden_sample"])
+
+                c_thumb_col, c_btn_col = st.columns([1.0, 3.0], gap="small")
+                with c_thumb_col:
+                    render_html(f"""
+                    <div style="width: 44px; height: 44px; border-radius: 6px; overflow: hidden; border: 1.5px solid {'#171717' if is_active else '#E5E5E2'}; background: #FFFFFF; display: flex; align-items: center; justify-content: center; margin-top: 2px;">
+                        <img src="data:image/jpeg;base64,{thumb_b64}" style="width: 100%; height: 100%; object-fit: cover;" />
+                    </div>
+                    """)
+                with c_btn_col:
+                    label_text = f"✔ {c_info['name']}" if is_active else c_info['name']
+                    if st.button(label_text, key=f"right_col_cat_{c_key}", type="primary" if is_active else "secondary", use_container_width=True):
+                        if c_key != active_cat:
+                            purge_inspection(new_category=c_key)
+                            st.rerun()
+                    render_html(f"""
+                    <div style="font-size: 0.68rem; color: #8E8E93; margin-top: -6px; margin-bottom: 12px; line-height: 1.2;">
+                        {c_info['label']}
+                    </div>
+                    """)
 
     # -------------------------------------------------------------------------
     # RECENT INSPECTIONS (MINIMAL LIST)
