@@ -111,6 +111,8 @@ if "nav_page" not in st.session_state:
     st.session_state["nav_page"] = "Home"
 if "selected_category" not in st.session_state:
     st.session_state["selected_category"] = "bottle"
+if "home_hero_selection" not in st.session_state:
+    st.session_state["home_hero_selection"] = "Carton Box"
 if "uploaded_image_data" not in st.session_state:
     st.session_state["uploaded_image_data"] = None  # (filename, bytes, (w, h))
 if "current_inspection" not in st.session_state:
@@ -217,6 +219,51 @@ render_html("""
         background-color: #2E2E2E !important;
         border-color: #2E2E2E !important;
         color: #FFFFFF !important;
+    }
+
+    /* Prevent any button/pill text truncation */
+    div.stButton > button,
+    div.stButton > button p,
+    div.stButton > button span,
+    [data-testid="stPills"] button,
+    [data-testid="stPills"] button p,
+    [data-testid="stPills"] button span,
+    [data-testid="stSegmentedControl"] button,
+    [data-testid="stSegmentedControl"] button p {
+        white-space: nowrap !important;
+        text-overflow: clip !important;
+        overflow: visible !important;
+        font-size: 0.84rem !important;
+    }
+
+    /* Minimalist Apple-style Pills for Full Category Names */
+    [data-testid="stPills"] {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        margin-top: 4px !important;
+        margin-bottom: 8px !important;
+    }
+    [data-testid="stPills"] button {
+        border-radius: 6px !important;
+        border: 1px solid #E5E5E2 !important;
+        background-color: #FFFFFF !important;
+        color: #404040 !important;
+        padding: 5px 14px !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+        transition: all 0.15s ease !important;
+    }
+    [data-testid="stPills"] button:hover {
+        border-color: #C0C0BA !important;
+        color: #171717 !important;
+        background-color: #F8F8F6 !important;
+    }
+    [data-testid="stPills"] button[aria-selected="true"] {
+        background-color: #171717 !important;
+        color: #FFFFFF !important;
+        border-color: #171717 !important;
+        font-weight: 600 !important;
     }
 
     /* Hero Typography */
@@ -490,17 +537,27 @@ if st.session_state["nav_page"] == "Home":
 
         st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
 
-        # Minimal Category Selector
-        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #8E8E93; text-transform: uppercase;'>PRODUCT</div>")
-        c_cols = st.columns(5)
-        for idx, (ckey, cval) in enumerate(CATEGORIES.items()):
-            with c_cols[idx]:
-                is_selected = (active_cat == ckey)
-                btn_name = f"✔ {cval['name']}" if is_selected else cval["name"]
-                if st.button(btn_name, key=f"hero_cat_{ckey}", use_container_width=True):
-                    if active_cat != ckey:
-                        purge_inspection(new_category=ckey)
-                        st.rerun()
+        # Minimal Category Selector with FULL Names (No Truncation)
+        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: #8E8E93; text-transform: uppercase; margin-bottom: 2px;'>PRODUCT</div>")
+        home_product_options = ["Carton Box", "Bottle", "Leather", "Transistor", "Zipper", "Screw"]
+        cur_selection = st.session_state.get("home_hero_selection", "Carton Box")
+        if cur_selection not in home_product_options:
+            cur_selection = "Carton Box"
+
+        selected_pill = st.pills(
+            "Product",
+            options=home_product_options,
+            default=cur_selection,
+            key="home_hero_pills_widget",
+            label_visibility="collapsed"
+        )
+
+        if selected_pill and selected_pill != cur_selection:
+            st.session_state["home_hero_selection"] = selected_pill
+            if selected_pill.lower() in CATEGORIES:
+                st.session_state["selected_category"] = selected_pill.lower()
+                purge_inspection(new_category=selected_pill.lower())
+            st.rerun()
 
         # Small Subtle Technical Information Area
         render_html("""
@@ -511,32 +568,62 @@ if st.session_state["nav_page"] == "Home":
         """)
 
     with hero_right:
-        # Dominant Hero Product Visual
-        sample_path = Path(cat_data["golden_sample"])
-        if sample_path.exists():
-            with open(sample_path, "rb") as f:
-                img_bytes = f.read()
-            b64_sample = base64.b64encode(img_bytes).decode("utf-8")
-        else:
-            b64_sample = ""
+        cur_sel = st.session_state.get("home_hero_selection", "Carton Box")
 
-        render_html(f"""
-        <div class="hero-visual-frame">
-            <div class="corner-bracket corner-tl"></div>
-            <div class="corner-bracket corner-tr"></div>
-            <div class="corner-bracket corner-bl"></div>
-            <div class="corner-bracket corner-br"></div>
-            <div class="visual-top-meta">
-                <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
-                <span>● READY</span>
+        if cur_sel == "Carton Box":
+            carton_path = Path("assets/carton_box_scan.jpg")
+            if carton_path.exists():
+                with open(carton_path, "rb") as f:
+                    b64_sample = base64.b64encode(f.read()).decode("utf-8")
+                img_mime = "image/jpeg"
+            else:
+                b64_sample = ""
+                img_mime = "image/png"
+
+            render_html(f"""
+            <div class="hero-visual-frame">
+                <div class="corner-bracket corner-tl"></div>
+                <div class="corner-bracket corner-tr"></div>
+                <div class="corner-bracket corner-bl"></div>
+                <div class="corner-bracket corner-br"></div>
+                <div class="visual-top-meta">
+                    <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
+                    <span>● SCANNING ACTIVE</span>
+                </div>
+                <img src="data:{img_mime};base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0; border-radius: 4px;" />
+                <div class="visual-bottom-meta">
+                    <span>TARGET: INDUSTRIAL PACKAGING (CARTON BOX)</span>
+                    <span>REF: OPTICAL CONVEYOR SCAN</span>
+                </div>
             </div>
-            <img src="data:image/png;base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0;" />
-            <div class="visual-bottom-meta">
-                <span>CATEGORY: {cat_data['name'].upper()}</span>
-                <span>REF: NOMINAL GOLDEN SAMPLE</span>
+            """)
+        else:
+            cat_key = cur_sel.lower()
+            cat_info = CATEGORIES.get(cat_key, CATEGORIES["bottle"])
+            sample_path = Path(cat_info["golden_sample"])
+            if sample_path.exists():
+                with open(sample_path, "rb") as f:
+                    b64_sample = base64.b64encode(f.read()).decode("utf-8")
+            else:
+                b64_sample = ""
+
+            render_html(f"""
+            <div class="hero-visual-frame">
+                <div class="corner-bracket corner-tl"></div>
+                <div class="corner-bracket corner-tr"></div>
+                <div class="corner-bracket corner-bl"></div>
+                <div class="corner-bracket corner-br"></div>
+                <div class="visual-top-meta">
+                    <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
+                    <span>● READY</span>
+                </div>
+                <img src="data:image/png;base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0;" />
+                <div class="visual-bottom-meta">
+                    <span>CATEGORY: {cat_info['name'].upper()}</span>
+                    <span>REF: NOMINAL GOLDEN SAMPLE</span>
+                </div>
             </div>
-        </div>
-        """)
+            """)
 
 
 # =============================================================================
@@ -554,16 +641,22 @@ elif st.session_state["nav_page"] == "Inspect":
             st.rerun()
 
     with top_nav2:
-        # Category Selector in header
-        c_cols = st.columns(5)
-        for idx, (ckey, cval) in enumerate(CATEGORIES.items()):
-            with c_cols[idx]:
-                is_selected = (active_cat == ckey)
-                btn_name = f"✔ {cval['name']}" if is_selected else cval["name"]
-                if st.button(btn_name, key=f"inspect_cat_{ckey}", use_container_width=True):
-                    if active_cat != ckey:
-                        purge_inspection(new_category=ckey)
-                        st.rerun()
+        inspect_categories = ["Bottle", "Leather", "Transistor", "Zipper", "Screw"]
+        cur_inspect_title = active_cat.title()
+        if cur_inspect_title not in inspect_categories:
+            cur_inspect_title = "Bottle"
+
+        sel_inspect_pill = st.pills(
+            "Inspect Category",
+            options=inspect_categories,
+            default=cur_inspect_title,
+            key="inspect_category_pills_nav",
+            label_visibility="collapsed"
+        )
+
+        if sel_inspect_pill and sel_inspect_pill.lower() != active_cat:
+            purge_inspection(new_category=sel_inspect_pill.lower())
+            st.rerun()
 
     st.markdown("<hr style='margin: 0.8rem 0 1.2rem 0; border: none; border-bottom: 1px solid #E5E5E2;' />", unsafe_allow_html=True)
 
