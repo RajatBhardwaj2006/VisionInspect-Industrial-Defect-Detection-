@@ -605,12 +605,12 @@ if st.session_state["nav_page"] == "Home":
                 <div class="corner-bracket corner-br"></div>
                 <div class="visual-top-meta">
                     <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
-                    <span>● SCANNING ACTIVE</span>
+                    <span style="color: #EF4444; font-weight: 700;">● DEFECT DETECTED</span>
                 </div>
                 <img src="data:{img_mime};base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0; border-radius: 4px;" />
                 <div class="visual-bottom-meta">
                     <span>TARGET: INDUSTRIAL PACKAGING (CARTON BOX)</span>
-                    <span>REF: OPTICAL CONVEYOR SCAN</span>
+                    <span style="color: #EF4444; font-weight: 600;">DEFECT: CRUSHED FLAP / DAMAGE</span>
                 </div>
             </div>
             """)
