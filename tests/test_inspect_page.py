@@ -13,12 +13,13 @@ from pathlib import Path
 from PIL import Image
 import pytest
 
-from app.app import CATEGORIES, get_thumbnail_b64
+from app.app import CATEGORIES, get_thumbnail_b64, get_simple_explanation
 
 
 def test_category_catalog_and_golden_samples():
-    """Verify all 5 industrial categories exist with valid golden samples."""
+    """Verify strictly all 5 industrial categories exist with valid golden samples and no carton model."""
     expected_categories = ["bottle", "leather", "transistor", "zipper", "screw"]
+    assert len(CATEGORIES) == 5, f"Expected exactly 5 categories, found {len(CATEGORIES)}"
     for cat in expected_categories:
         assert cat in CATEGORIES, f"Category {cat} missing from CATEGORIES catalog"
         info = CATEGORIES[cat]
@@ -30,6 +31,10 @@ def test_category_catalog_and_golden_samples():
         # Verify golden sample file exists
         p = Path(info["golden_sample"])
         assert p.exists(), f"Golden sample not found at {p}"
+
+    assert "carton" not in CATEGORIES
+    assert "carton_box" not in CATEGORIES
+    assert "box" not in CATEGORIES
 
 
 def test_thumbnail_generation_all_categories():
@@ -44,47 +49,52 @@ def test_thumbnail_generation_all_categories():
 
 
 def test_defect_analysis_and_usability_contracts():
-    """Verify evidence-based defect analysis and usability assessment text logic."""
-    # Test DEFECTIVE case
-    is_defective = True
-    score = 2.45
-    th = 1.50
-    margin = score - th
-    n_defects = 2
-    regs = [
-        {"label": "Region 01", "area": 120, "score": 2.45, "bbox": [10, 20, 30, 40]},
-        {"label": "Region 02", "area": 45, "score": 1.85, "bbox": [50, 60, 20, 20]}
-    ]
+    """Verify evidence-based defect analysis and plain-English usability assessment text logic."""
+    jargon_blacklist = ["448-dimensional", "resnet", "manifold", "coreset", "euclidean"]
 
-    # Verify WHAT / WHERE / WHY for Defective
-    what_text = f"Optical feature extraction yielded an anomaly score of {score:.4f}, exceeding the calibrated nominal threshold of {th:.4f} (Decision Margin: +{margin:.4f})."
-    assert "2.4500" in what_text
-    assert "1.5000" in what_text
-    assert "+0.9500" in what_text
+    # 1. Defective Screw with thread defect
+    what, where, why = get_simple_explanation("screw", "thread_side/001.png", is_defective=True, score=0.62, threshold=0.45, num_defects=1)
+    assert "screw thread" in what
+    assert "1 localized region was found near the screw thread." in where
+    assert "cross the inspection threshold" in why
+    for term in jargon_blacklist:
+        assert term not in what.lower()
+        assert term not in where.lower()
+        assert term not in why.lower()
 
-    where_text = f"Localized to {n_defects} discrete defect cluster(s)"
-    assert "2 discrete defect cluster(s)" in where_text
+    # 2. Defective Bottle with mouth crack
+    what, where, why = get_simple_explanation("bottle", "broken_large/002.png", is_defective=True, score=0.75, threshold=0.35, num_defects=2)
+    assert "bottle opening" in what
+    assert "2 localized regions were found around the bottle rim." in where
+    assert "cross the inspection threshold" in why
 
-    # Verify Usability Assessment for Defective
-    usability_status = "REQUIRES REVIEW"
-    assert usability_status == "REQUIRES REVIEW"
+    # 3. Defective Transistor with bent pin
+    what, where, why = get_simple_explanation("transistor", "bent_lead/003.png", is_defective=True, score=0.58, threshold=0.40, num_defects=1)
+    assert "transistor pins" in what
+    assert "near the connection pins" in where
 
-    # Ensure no speculative safety statements
-    speculative_terms = ["will break", "is unsafe", "guaranteed failure", "catastrophic danger"]
-    for term in speculative_terms:
-        assert term not in what_text.lower()
-        assert term not in where_text.lower()
+    # 4. Defective Zipper with broken teeth
+    what, where, why = get_simple_explanation("zipper", "broken_teeth/004.png", is_defective=True, score=0.82, threshold=0.50, num_defects=1)
+    assert "zipper" in what
+    assert "along the zipper teeth" in where
 
-    # Test NORMAL case
-    is_defective = False
-    score = 1.10
-    th = 1.50
-    margin = score - th
-    n_defects = 0
+    # 5. Defective Leather
+    what, where, why = get_simple_explanation("leather", "cut/005.png", is_defective=True, score=0.91, threshold=0.42, num_defects=3)
+    assert "leather surface or texture" in what
+    assert "3 localized regions were found on the leather surface." in where
 
-    what_normal = f"Optical scan yielded an anomaly score of {score:.4f}, safely below the calibrated nominal threshold of {th:.4f}"
-    assert "1.1000" in what_normal
-    assert "1.5000" in what_normal
+    # 6. Normal Sample
+    what_n, where_n, why_n = get_simple_explanation("screw", "good/000.png", is_defective=False, score=0.32, threshold=0.45, num_defects=0)
+    assert what_n == "No unusual areas were detected."
+    assert "expected normal pattern" in where_n
+    assert "stayed below the anomaly threshold" in why_n
+    for term in jargon_blacklist:
+        assert term not in what_n.lower()
+        assert term not in where_n.lower()
+        assert term not in why_n.lower()
 
-    usability_normal = "PASSES VISUAL INSPECTION"
-    assert usability_normal == "PASSES VISUAL INSPECTION"
+    # 7. Usability Assessment copy validation
+    usability_defective = "VisionInspect found a visual difference that needs to be reviewed. The system detects visual anomalies; it does not independently certify whether a physical component is safe to use."
+    usability_normal = "No significant visual difference was detected under the current inspection criteria."
+    assert "does not independently certify" in usability_defective
+    assert "No significant visual difference was detected" in usability_normal

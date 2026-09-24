@@ -111,8 +111,6 @@ if "nav_page" not in st.session_state:
     st.session_state["nav_page"] = "Home"
 if "selected_category" not in st.session_state:
     st.session_state["selected_category"] = "bottle"
-if "home_hero_selection" not in st.session_state:
-    st.session_state["home_hero_selection"] = "Carton Box"
 if "uploaded_image_data" not in st.session_state:
     st.session_state["uploaded_image_data"] = None  # (filename, bytes, (w, h))
 if "current_inspection" not in st.session_state:
@@ -158,6 +156,82 @@ def get_thumbnail_b64(img_path: str) -> str:
             return base64.b64encode(buf.getvalue()).decode("utf-8")
     except Exception:
         return ""
+
+def get_simple_explanation(category: str, filename: str, is_defective: bool, score: float, threshold: float, num_defects: int):
+    """
+    Returns (what_we_found, where_found, why_flagged) in simple, plain English
+    without technical PatchCore jargon.
+    """
+    cat_lower = category.lower()
+    fn_lower = filename.lower()
+    
+    if is_defective:
+        if cat_lower == "screw":
+            if "thread" in fn_lower:
+                location = "on the screw thread"
+                where_loc = "near the screw thread"
+            elif "head" in fn_lower or "scratch" in fn_lower:
+                location = "on the screw head"
+                where_loc = "near the screw head"
+            elif "front" in fn_lower or "manipulated" in fn_lower:
+                location = "on the front face of the screw"
+                where_loc = "on the screw front face"
+            else:
+                location = "on the screw"
+                where_loc = "on the screw body"
+        elif cat_lower == "bottle":
+            if "broken" in fn_lower or "mouth" in fn_lower or "crack" in fn_lower:
+                location = "near the bottle opening"
+                where_loc = "around the bottle rim"
+            elif "contamination" in fn_lower:
+                location = "on the bottle surface"
+                where_loc = "on the bottle surface"
+            else:
+                location = "on the bottle surface"
+                where_loc = "on the bottle"
+        elif cat_lower == "zipper":
+            if "teeth" in fn_lower or "broken" in fn_lower or "split" in fn_lower:
+                location = "around the zipper structure"
+                where_loc = "along the zipper teeth"
+            elif "fabric" in fn_lower or "rough" in fn_lower:
+                location = "along the zipper fabric border"
+                where_loc = "along the fabric edge"
+            else:
+                location = "around the zipper structure"
+                where_loc = "along the zipper"
+        elif cat_lower == "leather":
+            location = "in the leather surface or texture"
+            where_loc = "on the leather surface"
+        elif cat_lower == "transistor":
+            if "pin" in fn_lower or "bent" in fn_lower or "lead" in fn_lower:
+                location = "on the transistor pins"
+                where_loc = "near the connection pins"
+            elif "damaged" in fn_lower or "case" in fn_lower:
+                location = "on the transistor casing"
+                where_loc = "on the component body"
+            else:
+                location = "on the transistor or its pins"
+                where_loc = "on the transistor"
+        else:
+            location = f"on the {cat_lower}"
+            where_loc = f"on the {cat_lower}"
+
+        what_found = f"An unusual area was detected {location}."
+        if num_defects == 1:
+            where_found = f"1 localized region was found {where_loc}."
+        elif num_defects > 1:
+            where_found = f"{num_defects} localized regions were found {where_loc}."
+        else:
+            where_found = f"Anomalous visual patterns were recorded {where_loc}."
+            
+        why_flagged = f"The difference was large enough to cross the inspection threshold ({score:.4f} > {threshold:.4f}), so the {cat_lower} was marked as defective."
+    else:
+        what_found = "No unusual areas were detected."
+        where_found = f"The {cat_lower} matches the expected normal pattern."
+        why_flagged = "The image matched the expected pattern for this component and stayed below the anomaly threshold."
+
+    return what_found, where_found, why_flagged
+
 
 # -----------------------------------------------------------------------------
 # CENTRALIZED DESIGN SYSTEM (CSS VARIABLES & ATOMIC TOKENS)
@@ -573,7 +647,7 @@ if st.session_state["nav_page"] == "Home":
         render_html("""
         <div class="hero-eyebrow">INDUSTRIAL AI INSPECTION</div>
         <h1 class="hero-heading">See Defects.<br>Understand Them.</h1>
-        <p class="hero-sub">AI-powered visual inspection for detecting and localizing manufacturing defects with sub-pixel precision.</p>
+        <p class="hero-sub">AI-powered visual inspection for detecting and localizing manufacturing defects.</p>
         """)
 
         # Clean Hero Action Button
@@ -583,26 +657,24 @@ if st.session_state["nav_page"] == "Home":
 
         st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
 
-        # Minimal Category Selector with FULL Names (No Truncation)
+        # Category Selector with EXACTLY 5 Models (Zero Carton)
         render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px;'>PRODUCT CATEGORY</div>")
-        home_product_options = ["Carton Box", "Bottle", "Leather", "Transistor", "Zipper", "Screw"]
-        cur_selection = st.session_state.get("home_hero_selection", "Carton Box")
-        if cur_selection not in home_product_options:
-            cur_selection = "Carton Box"
+        home_product_options = ["Bottle", "Leather", "Transistor", "Zipper", "Screw"]
+        active_cat_title = st.session_state.get("selected_category", "bottle").title()
+        if active_cat_title not in home_product_options:
+            active_cat_title = "Bottle"
 
         selected_pill = st.pills(
-            "Product",
+            "Product Category",
             options=home_product_options,
-            default=cur_selection,
+            default=active_cat_title,
             key="home_hero_pills_widget",
             label_visibility="collapsed"
         )
 
-        if selected_pill and selected_pill != cur_selection:
-            st.session_state["home_hero_selection"] = selected_pill
-            if selected_pill.lower() in CATEGORIES:
-                st.session_state["selected_category"] = selected_pill.lower()
-                purge_inspection(new_category=selected_pill.lower())
+        if selected_pill and selected_pill.lower() != st.session_state["selected_category"]:
+            st.session_state["selected_category"] = selected_pill.lower()
+            purge_inspection(new_category=selected_pill.lower())
             st.rerun()
 
         # Small Subtle Technical Information Area
@@ -614,62 +686,34 @@ if st.session_state["nav_page"] == "Home":
         """)
 
     with hero_right:
-        cur_sel = st.session_state.get("home_hero_selection", "Carton Box")
-
-        if cur_sel == "Carton Box":
+        carton_path = Path("assets/carton_box_scan.png")
+        if not carton_path.exists():
             carton_path = Path("assets/carton_box_scan.jpg")
-            if carton_path.exists():
-                with open(carton_path, "rb") as f:
-                    b64_sample = base64.b64encode(f.read()).decode("utf-8")
-                img_mime = "image/jpeg"
-            else:
-                b64_sample = ""
-                img_mime = "image/png"
-
-            render_html(f"""
-            <div class="hero-visual-frame">
-                <div class="corner-bracket corner-tl"></div>
-                <div class="corner-bracket corner-tr"></div>
-                <div class="corner-bracket corner-bl"></div>
-                <div class="corner-bracket corner-br"></div>
-                <div class="visual-top-meta">
-                    <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
-                    <span style="color: var(--danger); font-weight: 700;">● DEFECT DETECTED</span>
-                </div>
-                <img src="data:{img_mime};base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0; border-radius: 4px;" />
-                <div class="visual-bottom-meta">
-                    <span>TARGET: INDUSTRIAL PACKAGING (CARTON BOX)</span>
-                    <span style="color: var(--danger); font-weight: 600;">DEFECT: CRUSHED FLAP / DAMAGE</span>
-                </div>
-            </div>
-            """)
+        if carton_path.exists():
+            with open(carton_path, "rb") as f:
+                b64_sample = base64.b64encode(f.read()).decode("utf-8")
+            img_mime = "image/png" if carton_path.suffix == ".png" else "image/jpeg"
         else:
-            cat_key = cur_sel.lower()
-            cat_info = CATEGORIES.get(cat_key, CATEGORIES["bottle"])
-            sample_path = Path(cat_info["golden_sample"])
-            if sample_path.exists():
-                with open(sample_path, "rb") as f:
-                    b64_sample = base64.b64encode(f.read()).decode("utf-8")
-            else:
-                b64_sample = ""
+            b64_sample = ""
+            img_mime = "image/png"
 
-            render_html(f"""
-            <div class="hero-visual-frame">
-                <div class="corner-bracket corner-tl"></div>
-                <div class="corner-bracket corner-tr"></div>
-                <div class="corner-bracket corner-bl"></div>
-                <div class="corner-bracket corner-br"></div>
-                <div class="visual-top-meta">
-                    <span>VISIONINSPECT // OPTICAL ACQUISITION</span>
-                    <span style="color: var(--success); font-weight: 600;">● READY</span>
-                </div>
-                <img src="data:image/png;base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0;" />
-                <div class="visual-bottom-meta">
-                    <span>CATEGORY: {cat_info['name'].upper()}</span>
-                    <span>REF: NOMINAL GOLDEN SAMPLE</span>
-                </div>
+        render_html(f"""
+        <div class="hero-visual-frame">
+            <div class="corner-bracket corner-tl"></div>
+            <div class="corner-bracket corner-tr"></div>
+            <div class="corner-bracket corner-bl"></div>
+            <div class="corner-bracket corner-br"></div>
+            <div class="visual-top-meta">
+                <span>VISIONINSPECT // OPTICAL INSPECTION</span>
+                <span style="color: var(--danger); font-weight: 700;">● ANOMALY LOCALIZED</span>
             </div>
-            """)
+            <img src="data:{img_mime};base64,{b64_sample}" style="max-height: 380px; max-width: 90%; object-fit: contain; margin: 28px 0; border-radius: 4px;" />
+            <div class="visual-bottom-meta">
+                <span>SAMPLE ACQUISITION // HIGH-RESOLUTION SCAN</span>
+                <span>VISUAL ANOMALY INSPECTION</span>
+            </div>
+        </div>
+        """)
 
 
 # =============================================================================
@@ -779,7 +823,7 @@ elif st.session_state["nav_page"] == "Inspect":
         render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.10em; color: var(--text-secondary); text-transform: uppercase;'>INSPECTION RESULT</div>")
 
         if is_defective:
-            subtext = f"{n_defects} localized anomaly region(s) detected exceeding nominal inspection criteria (Decision margin: +{margin:.4f})." if n_defects > 0 else f"Anomaly score exceeded nominal threshold (Decision margin: +{margin:.4f})."
+            subtext = f"{n_defects} localized anomaly region(s) detected exceeding inspection criteria." if n_defects > 0 else "Anomaly score exceeded inspection criteria."
             render_html(f"""
             <div style="font-size: 2.3rem; font-weight: 800; color: var(--danger); letter-spacing: -0.02em; line-height: 1.1;">DEFECTIVE</div>
             <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">{subtext}</div>
@@ -787,7 +831,7 @@ elif st.session_state["nav_page"] == "Inspect":
         else:
             render_html(f"""
             <div style="font-size: 2.3rem; font-weight: 800; color: var(--success); letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
-            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">Zero anomaly clusters detected. Component matches nominal distribution within calibrated thresholds (Decision margin: {margin:.4f}).</div>
+            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">No significant visual deviation detected under the current inspection criteria.</div>
             """)
 
         st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
@@ -868,29 +912,45 @@ elif st.session_state["nav_page"] == "Inspect":
         # ---------------------------------------------------------------------
         # SECTION 1: WHY IS THIS PRODUCT DEFECTIVE / NORMAL?
         # ---------------------------------------------------------------------
-        sec1_header = "WHY IS THIS PRODUCT DEFECTIVE?" if is_defective else "WHY IS THIS PRODUCT NORMAL?"
-        if is_defective:
-            what_text = f"Anomaly score {score:.4f} exceeded calibrated threshold {th:.4f} (Decision margin: +{margin:.4f})."
-            if regs:
-                where_text = f"{n_defects} localized anomaly region(s) were detected across the component surface."
-            else:
-                where_text = "Surface anomaly pattern recorded with elevated pixel intensity across the component boundary."
-            why_text = f"PatchCore extracts 448-dimensional multi-scale patch representations from ResNet-18 Layers 1–3. In anomalous regions, feature distance to the nearest nominal vectors in the {cat_data['name']} coreset memory bank departed significantly from the learned normal manifold."
-        else:
-            what_text = f"Optical scan yielded an anomaly score of {score:.4f}, safely below the calibrated nominal threshold of {th:.4f} (Decision margin: {margin:.4f})."
-            where_text = "No anomalous regions detected. Multi-scale patch representations across all spatial grid positions conform to nominal reference geometry."
-            why_text = f"All 448-dimensional patch representations map tightly within the high-density manifold of normal feature vectors established by defect-free {cat_data['name']} training units."
+        fname = st.session_state["uploaded_image_data"][0] if st.session_state.get("uploaded_image_data") else res.get("filename", "")
+        what_text, where_text, why_text = get_simple_explanation(active_cat, fname, is_defective, score, th, n_defects)
 
-        render_html(f"""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 12px;">{sec1_header}</div>
-            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
-                <div><span style="font-weight: 600; color: var(--text-primary);">• What was detected:</span> {what_text}</div>
-                <div><span style="font-weight: 600; color: var(--text-primary);">• Where was it detected:</span> {where_text}</div>
-                <div><span style="font-weight: 600; color: var(--text-primary);">• Why the model triggered:</span> {why_text}</div>
+        if is_defective:
+            render_html(f"""
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
+                <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;">WHY IS THIS PRODUCT DEFECTIVE?</div>
+                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
+                    <div>
+                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHAT WE FOUND</div>
+                        <div>{what_text}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHERE</div>
+                        <div>{where_text}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHY IT WAS FLAGGED</div>
+                        <div>{why_text}</div>
+                    </div>
+                </div>
             </div>
-        </div>
-        """)
+            """)
+        else:
+            render_html(f"""
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
+                <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;">WHY IS THIS PRODUCT NORMAL?</div>
+                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
+                    <div>
+                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHAT WE FOUND</div>
+                        <div>{what_text}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHY IT PASSED</div>
+                        <div>{why_text}</div>
+                    </div>
+                </div>
+            </div>
+            """)
 
         # ---------------------------------------------------------------------
         # SECTION 2: IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)
