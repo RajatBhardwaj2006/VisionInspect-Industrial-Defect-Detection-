@@ -251,19 +251,19 @@ async def predict_batch(
     return_visualizations: bool = Form(True)
 ):
     """
-    Batch inspection endpoint for 1 to 20 images.
+    Batch inspection endpoint for 1 to 5 images.
     Processes images independently with per-image error resilience.
     """
     if len(files) == 0:
         raise HTTPException(
             status_code=400,
-            detail="Batch size must be between 1 and 20 images. Upload at least one image to begin inspection."
+            detail="Batch size must be between 1 and 5 images. Upload at least one image to begin inspection."
         )
         
-    if len(files) > 20:
+    if len(files) > 5:
         raise HTTPException(
             status_code=400,
-            detail=f"Batch size must be between 1 and 20 images. Please upload a maximum of 20 images. You uploaded {len(files)} images."
+            detail=f"Batch size must be between 1 and 5 images. Please upload a maximum of 5 images. You uploaded {len(files)} images."
         )
         
     category = category.strip().lower()
