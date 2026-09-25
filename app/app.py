@@ -131,6 +131,8 @@ if "is_scanning" not in st.session_state:
     st.session_state["is_scanning"] = False
 if "quick_sample_choice" not in st.session_state:
     st.session_state["quick_sample_choice"] = None
+if "theme_mode" not in st.session_state:
+    st.session_state["theme_mode"] = "light"
 
 # Helper to purge inspection state atomically
 def purge_inspection(new_category: Optional[str] = None):
@@ -584,28 +586,71 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
 # -----------------------------------------------------------------------------
 # CENTRALIZED DESIGN SYSTEM (CSS VARIABLES & ATOMIC TOKENS)
 # -----------------------------------------------------------------------------
+is_dark_theme = (st.session_state.get("theme_mode", "light") == "dark")
+
+theme_css_tokens = """
+    --bg: #0E0E10;
+    --surface: #18181B;
+    --surface-subtle: #242429;
+    --text-primary: #F4F4F5;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    --border: #2E2E34;
+    --border-strong: #44444C;
+    --dark: #F4F4F5;
+    --dark-hover: #E4E4E7;
+    --btn-primary-bg: #F4F4F5;
+    --btn-primary-text: #0E0E10;
+    --btn-primary-hover: #E4E4E7;
+    --btn-secondary-bg: #18181B;
+    --btn-secondary-text: #F4F4F5;
+    --btn-secondary-border: #44444C;
+    --card-bg: #18181B;
+    --card-border: #2E2E34;
+    --success: #22C55E;
+    --success-bg: #052E16;
+    --danger: #EF4444;
+    --danger-bg: #450A0A;
+    --warning: #F59E0B;
+    --warning-bg: #451A03;
+""" if is_dark_theme else """
+    --bg: #F5F5F3;
+    --surface: #FFFFFF;
+    --surface-subtle: #FAFAF8;
+    --text-primary: #171717;
+    --text-secondary: #5F6368;
+    --text-muted: #7A7A7A;
+    --border: #E4E4E0;
+    --border-strong: #D4D4CF;
+    --dark: #171717;
+    --dark-hover: #2A2A2A;
+    --btn-primary-bg: #171717;
+    --btn-primary-text: #FFFFFF;
+    --btn-primary-hover: #2D2D2D;
+    --btn-secondary-bg: #FFFFFF;
+    --btn-secondary-text: #171717;
+    --btn-secondary-border: #D4D4CF;
+    --card-bg: #FFFFFF;
+    --card-border: #E4E4E0;
+    --success: #15803D;
+    --success-bg: #F0FDF4;
+    --danger: #B91C1C;
+    --danger-bg: #FEF2F2;
+    --warning: #A16207;
+    --warning-bg: #FFFBEB;
+"""
+
+render_html(f"""
+<style>
+    :root {{
+        {theme_css_tokens}
+    }}
+</style>
+""")
+
 render_html("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-    :root {
-        --bg: #F5F5F3;
-        --surface: #FFFFFF;
-        --surface-subtle: #FAFAF8;
-        --text-primary: #171717;
-        --text-secondary: #5F6368;
-        --text-muted: #7A7A7A;
-        --border: #E4E4E0;
-        --border-strong: #D4D4CF;
-        --dark: #171717;
-        --dark-hover: #2A2A2A;
-        --success: #15803D;
-        --success-bg: #F0FDF4;
-        --danger: #B91C1C;
-        --danger-bg: #FEF2F2;
-        --warning: #A16207;
-        --warning-bg: #FFFBEB;
-    }
 
     /* Global Chrome Removal & App Resets */
     #MainMenu, header, footer, .stDeployButton {
@@ -620,6 +665,18 @@ render_html("""
         letter-spacing: -0.01em;
     }
 
+    .stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown li {
+        color: var(--text-primary) !important;
+    }
+
+    code {
+        background-color: var(--surface-subtle) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border) !important;
+        padding: 2px 5px !important;
+        border-radius: 4px !important;
+    }
+
     /* Centered Layout Container (1280-1400px with 32px desktop padding) */
     .block-container {
         max-width: 1320px !important;
@@ -631,16 +688,16 @@ render_html("""
         margin: 0 auto !important;
     }
 
-    /* Standardized Button System */
+    /* Standardized Crisp Button System */
     div.stButton > button {
         border-radius: 6px !important;
         font-weight: 500 !important;
         font-size: 0.84rem !important;
-        padding: 0.45rem 1.1rem !important;
+        padding: 0.48rem 1.15rem !important;
         transition: all 0.15s ease !important;
-        border: 1px solid var(--border) !important;
-        background-color: var(--surface) !important;
-        color: var(--text-primary) !important;
+        border: 1px solid var(--btn-secondary-border) !important;
+        background-color: var(--btn-secondary-bg) !important;
+        color: var(--btn-secondary-text) !important;
         box-shadow: none !important;
         cursor: pointer !important;
     }
@@ -649,15 +706,26 @@ render_html("""
         border-color: var(--border-strong) !important;
         color: var(--text-primary) !important;
     }
+    div.stButton > button * {
+        color: inherit !important;
+    }
+
+    /* High-Visibility Primary Buttons (Inspect Queue, Start Inspection, etc.) */
     div.stButton > button[kind="primary"] {
-        background-color: var(--dark) !important;
-        color: var(--surface) !important;
-        border: 1px solid var(--dark) !important;
+        background-color: var(--btn-primary-bg) !important;
+        color: var(--btn-primary-text) !important;
+        border: 1.5px solid var(--btn-primary-bg) !important;
+        font-weight: 600 !important;
+        font-size: 0.86rem !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
     }
     div.stButton > button[kind="primary"]:hover {
-        background-color: var(--dark-hover) !important;
-        border-color: var(--dark-hover) !important;
-        color: var(--surface) !important;
+        background-color: var(--btn-primary-hover) !important;
+        border-color: var(--btn-primary-hover) !important;
+        color: var(--btn-primary-text) !important;
+    }
+    div.stButton > button[kind="primary"] * {
+        color: var(--btn-primary-text) !important;
     }
 
     /* Prevent Button / Pill Text Clipping */
@@ -672,68 +740,88 @@ render_html("""
         overflow: visible !important;
     }
 
-    /* Minimalist Apple-style Pills */
+    /* Minimalist Apple-style Pills (Product Category Selector) */
     [data-testid="stPills"] {
         display: flex !important;
         flex-wrap: wrap !important;
         gap: 8px !important;
-        margin-top: 4px !important;
-        margin-bottom: 8px !important;
+        margin-top: 6px !important;
+        margin-bottom: 12px !important;
     }
     [data-testid="stPills"] button {
-        border-radius: 6px !important;
-        border: 1px solid var(--border) !important;
+        border-radius: 20px !important;
+        border: 1px solid var(--border-strong) !important;
         background-color: var(--surface) !important;
-        color: var(--text-secondary) !important;
-        padding: 5px 14px !important;
+        color: var(--text-primary) !important;
+        padding: 6px 16px !important;
         font-weight: 500 !important;
-        box-shadow: none !important;
+        font-size: 0.84rem !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
         transition: all 0.15s ease !important;
+        cursor: pointer !important;
     }
     [data-testid="stPills"] button:hover {
-        border-color: var(--border-strong) !important;
-        color: var(--text-primary) !important;
+        border-color: var(--text-primary) !important;
         background-color: var(--surface-subtle) !important;
+        color: var(--text-primary) !important;
     }
     [data-testid="stPills"] button[aria-selected="true"] {
         background-color: var(--dark) !important;
-        color: var(--surface) !important;
+        color: var(--btn-primary-text) !important;
         border-color: var(--dark) !important;
         font-weight: 600 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+    }
+    [data-testid="stPills"] button * {
+        color: inherit !important;
+        font-size: inherit !important;
+        font-weight: inherit !important;
     }
 
-    /* Clean Selectbox & Popover Styling */
-    div[data-testid="stSelectbox"] > div {
+    /* Clean Crisp Selectbox & Popover Dropdown */
+    div[data-testid="stSelectbox"] label,
+    div[data-testid="stSelectbox"] label p {
+        color: var(--text-primary) !important;
+        font-size: 0.74rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.04em !important;
+        text-transform: uppercase !important;
+        margin-bottom: 4px !important;
+    }
+    div[data-testid="stSelectbox"] > div,
+    div[data-baseweb="select"],
+    div[data-baseweb="select"] > div {
         background-color: var(--surface) !important;
-        border: 1px solid var(--border) !important;
+        border: 1px solid var(--border-strong) !important;
         border-radius: 6px !important;
         color: var(--text-primary) !important;
-    }
-    div[data-testid="stSelectbox"] * {
-        color: var(--text-primary) !important;
-    }
-    div[data-testid="stSelectbox"] svg {
-        fill: var(--text-primary) !important;
-    }
-    div[data-baseweb="select"] {
-        background-color: var(--surface) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 6px !important;
     }
     div[data-baseweb="select"] * {
         color: var(--text-primary) !important;
     }
-    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
+    div[data-baseweb="select"] input {
+        background-color: transparent !important;
+        color: var(--text-primary) !important;
+    }
+    div[data-baseweb="select"] svg {
+        fill: var(--text-primary) !important;
+    }
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    ul[role="listbox"] {
         background-color: var(--surface) !important;
-        border: 1px solid var(--border) !important;
+        border: 1px solid var(--border-strong) !important;
         border-radius: 6px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
     }
     li[role="option"] {
         background-color: var(--surface) !important;
         color: var(--text-primary) !important;
+        font-size: 0.82rem !important;
+        padding: 8px 12px !important;
     }
-    li[role="option"]:hover, li[role="option"][aria-selected="true"] {
+    li[role="option"]:hover,
+    li[role="option"][aria-selected="true"] {
         background-color: var(--surface-subtle) !important;
         color: var(--text-primary) !important;
     }
@@ -758,7 +846,42 @@ render_html("""
     div[data-testid="stFileUploader"] button {
         background-color: var(--surface) !important;
         color: var(--text-primary) !important;
+        border: 1px solid var(--border-strong) !important;
+    }
+    div[data-testid="stFileUploaderFile"] {
+        background-color: var(--surface-subtle) !important;
+        border: 1px solid var(--border-strong) !important;
+        border-radius: 6px !important;
+    }
+    div[data-testid="stFileUploaderFile"] * {
+        color: var(--text-primary) !important;
+    }
+
+    /* Expanders & Table Styling for Dark/Light Mode */
+    div[data-testid="stExpander"] {
+        background-color: var(--surface) !important;
         border: 1px solid var(--border) !important;
+        border-radius: 6px !important;
+    }
+    div[data-testid="stExpander"] details {
+        background-color: var(--surface) !important;
+    }
+    div[data-testid="stExpander"] summary {
+        color: var(--text-primary) !important;
+    }
+    div[data-testid="stExpander"] summary:hover {
+        color: var(--text-primary) !important;
+    }
+    div[data-testid="stExpander"] summary svg {
+        fill: var(--text-primary) !important;
+    }
+    div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+        border-top: 1px solid var(--border) !important;
+        color: var(--text-secondary) !important;
+    }
+    table, th, td {
+        border-color: var(--border) !important;
+        color: var(--text-primary) !important;
     }
 
     /* Hero Typography */
@@ -1261,12 +1384,12 @@ render_html("""
         background: linear-gradient(to right, #000080 0%, #00FFFF 35%, #FFFF00 70%, #FF0000 100%);
     }
 
-    /* Clickable VisionInspect Logo */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
+    /* Clickable VisionInspect Logo (Strictly Scoped) */
+    div.st-key-nav_logo_btn button {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        padding: 4px 0 !important;
+        padding: 6px 0 !important;
         font-size: 1.08rem !important;
         font-weight: 700 !important;
         letter-spacing: -0.02em !important;
@@ -1274,14 +1397,17 @@ render_html("""
         cursor: pointer !important;
         text-align: left !important;
     }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover {
+    div.st-key-nav_logo_btn button:hover {
         background: transparent !important;
         color: var(--text-primary) !important;
         opacity: 0.75 !important;
     }
+    div.st-key-nav_logo_btn button * {
+        color: var(--text-primary) !important;
+    }
 
-    /* Plain Text Navigation Links */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stHorizontalBlock"] button {
+    /* Plain Text Navigation Links (Strictly Scoped) */
+    div[class*="st-key-nav_btn_"] button {
         background: transparent !important;
         border: none !important;
         border-radius: 0 !important;
@@ -1291,18 +1417,43 @@ render_html("""
         box-shadow: none !important;
         padding: 6px 14px !important;
     }
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stHorizontalBlock"] button:hover {
+    div[class*="st-key-nav_btn_"] button:hover {
         color: var(--text-primary) !important;
         background: transparent !important;
         border-bottom: 2px solid var(--border-strong) !important;
+    }
+    div[class*="st-key-nav_btn_"] button * {
+        color: inherit !important;
+    }
+
+    /* Theme Toggle Button (Light/Dark Mode) */
+    div.st-key-theme_toggle_btn button {
+        border-radius: 6px !important;
+        border: 1px solid var(--border-strong) !important;
+        background-color: var(--surface) !important;
+        color: var(--text-primary) !important;
+        font-size: 0.80rem !important;
+        font-weight: 600 !important;
+        padding: 0.45rem 0.75rem !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+    }
+    div.st-key-theme_toggle_btn button:hover {
+        background-color: var(--surface-subtle) !important;
+        border-color: var(--text-primary) !important;
+        color: var(--text-primary) !important;
+    }
+    div.st-key-theme_toggle_btn button * {
+        color: inherit !important;
     }
 </style>
 """)
 
 # -----------------------------------------------------------------------------
-# MINIMALIST NAVBAR (NO BULLETS, PLAIN TEXT WITH ACTIVE UNDERLINE)
+# MINIMALIST NAVBAR (4-COLUMN: BRAND | LINKS | ACTION | THEME TOGGLE)
 # -----------------------------------------------------------------------------
-nav_col1, nav_col2, nav_col3 = st.columns([1.8, 3.4, 1.4])
+nav_col1, nav_col2, nav_col3, nav_col4 = st.columns([1.6, 2.8, 1.4, 0.9], gap="small")
 
 with nav_col1:
     if st.button("●  VisionInspect", key="nav_logo_btn"):
@@ -1319,7 +1470,7 @@ with nav_col2:
             if is_active:
                 render_html(f"""
                 <style>
-                    div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stHorizontalBlock"] > div:nth-child({idx+1}) button {{
+                    div.st-key-nav_btn_{p} button {{
                         border-bottom: 2px solid var(--dark) !important;
                         color: var(--text-primary) !important;
                         font-weight: 600 !important;
@@ -1334,6 +1485,14 @@ with nav_col3:
     if st.button("New Inspection →", key="nav_start_btn", type="primary", use_container_width=True):
         st.session_state["nav_page"] = "Inspect"
         purge_inspection()
+        st.rerun()
+
+with nav_col4:
+    is_dark = (st.session_state.get("theme_mode", "light") == "dark")
+    theme_btn_label = "☼ Light" if not is_dark else "☾ Dark"
+    theme_tooltip = "Switch to Dark theme" if not is_dark else "Switch to Light theme"
+    if st.button(theme_btn_label, key="theme_toggle_btn", help=theme_tooltip, use_container_width=True):
+        st.session_state["theme_mode"] = "dark" if not is_dark else "light"
         st.rerun()
 
 st.markdown("<hr style='margin: 0.2rem 0 1.2rem 0; border: none; border-bottom: 1px solid var(--border);' />", unsafe_allow_html=True)
@@ -1989,9 +2148,9 @@ elif st.session_state["nav_page"] == "Inspect":
                     if is_active:
                         render_html(f"""
                         <style>
-                            div[data-testid="stHorizontalBlock"] button[key="right_col_cat_{c_key}"] {{
-                                border: 1.5px solid var(--dark) !important;
-                                background-color: var(--surface) !important;
+                            div.st-key-right_col_cat_{c_key} button {{
+                                border: 1.5px solid var(--text-primary) !important;
+                                background-color: var(--surface-subtle) !important;
                                 color: var(--text-primary) !important;
                                 font-weight: 600 !important;
                             }}
