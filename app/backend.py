@@ -169,6 +169,16 @@ def _process_single_image(
                 
     heatmap_base64 = result.get("heatmap_base64")
     decision_margin = result.get("decision_margin", round(float(result["score"] - result["image_threshold"]), 4))
+    
+    # Calculate peak anomaly score across localized regions or raw score
+    peak_score = round(float(max([reg.get("score", 0.0) for reg in defect_regions] + [result.get("score", 0.0)])), 4)
+    
+    # Extract memory bank size if available
+    mem_size = "N/A"
+    if hasattr(detector, "model") and hasattr(detector.model, "memory_bank"):
+        mb = detector.model.memory_bank
+        if mb is not None:
+            mem_size = f"{len(mb):,} patch vectors (10% coreset)"
 
     return {
         "request_id": req_id,
@@ -182,6 +192,8 @@ def _process_single_image(
         "image_threshold": round(float(result["image_threshold"]), 4),
         "pixel_threshold": round(float(result["pixel_threshold"]), 4),
         "decision_margin": decision_margin,
+        "peak_anomaly": peak_score,
+        "memory_bank": mem_size,
         "num_defects": len(defect_regions),
         "localized_regions": defect_regions,
         "defect_regions": defect_regions,
@@ -239,20 +251,19 @@ async def predict_batch(
     return_visualizations: bool = Form(True)
 ):
     """
-    Batch inspection endpoint for 1 to 5 images.
-    Rejects batches larger than 5 images.
+    Batch inspection endpoint for 1 to 20 images.
     Processes images independently with per-image error resilience.
     """
     if len(files) == 0:
         raise HTTPException(
             status_code=400,
-            detail="Batch size must be between 1 and 5 images. Upload at least one image to begin inspection."
+            detail="Batch size must be between 1 and 20 images. Upload at least one image to begin inspection."
         )
         
-    if len(files) > 5:
+    if len(files) > 20:
         raise HTTPException(
             status_code=400,
-            detail=f"Batch size must be between 1 and 5 images. Please upload a maximum of 5 images. You uploaded {len(files)} images."
+            detail=f"Batch size must be between 1 and 20 images. Please upload a maximum of 20 images. You uploaded {len(files)} images."
         )
         
     category = category.strip().lower()

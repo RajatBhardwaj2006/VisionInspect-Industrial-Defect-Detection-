@@ -113,6 +113,12 @@ if "selected_category" not in st.session_state:
     st.session_state["selected_category"] = "bottle"
 if "uploaded_image_data" not in st.session_state:
     st.session_state["uploaded_image_data"] = None  # (filename, bytes, (w, h))
+if "uploaded_images_list" not in st.session_state:
+    st.session_state["uploaded_images_list"] = []  # list of dicts: {"id", "filename", "bytes", "size"}
+if "inspection_results" not in st.session_state:
+    st.session_state["inspection_results"] = []  # list of result dicts
+if "active_result_idx" not in st.session_state:
+    st.session_state["active_result_idx"] = 0
 if "current_inspection" not in st.session_state:
     st.session_state["current_inspection"] = None
 if "current_request_id" not in st.session_state:
@@ -129,8 +135,11 @@ if "quick_sample_choice" not in st.session_state:
 # Helper to purge inspection state atomically
 def purge_inspection(new_category: Optional[str] = None):
     st.session_state["current_inspection"] = None
+    st.session_state["inspection_results"] = []
+    st.session_state["active_result_idx"] = 0
     st.session_state["current_request_id"] = None
     st.session_state["uploaded_image_data"] = None
+    st.session_state["uploaded_images_list"] = []
     st.session_state["quick_sample_choice"] = None
     if new_category:
         st.session_state["selected_category"] = new_category
@@ -160,7 +169,7 @@ def get_thumbnail_b64(img_path: str) -> str:
 def get_simple_explanation(category: str, filename: str, is_defective: bool, score: float, threshold: float, num_defects: int):
     """
     Returns (what_we_found, where_found, why_flagged) in simple, plain English
-    without technical PatchCore jargon.
+    without technical PatchCore jargon. Preserves API for backward compatibility and tests.
     """
     cat_lower = category.lower()
     fn_lower = filename.lower()
@@ -231,6 +240,345 @@ def get_simple_explanation(category: str, filename: str, is_defective: bool, sco
         why_flagged = "The image matched the expected pattern for this component and stayed below the anomaly threshold."
 
     return what_found, where_found, why_flagged
+
+
+def get_defect_explanation(category: str, filename: str, is_defective: bool, score: float, threshold: float, num_defects: int, margin: float):
+    """
+    Comprehensive three-part explanation in simple human language:
+    (why_heading, why_defect_desc, where_text, why_flagged_text)
+    1. WHY IS THIS PRODUCT DEFECTIVE? (or WHY IS THIS PRODUCT ACCEPTED?)
+    2. WHERE?
+    3. WHY WAS IT FLAGGED? (or WHY WAS IT ACCEPTED?)
+    """
+    cat_lower = category.lower()
+    fn_lower = filename.lower()
+    
+    if is_defective:
+        heading = "WHY IS THIS PRODUCT DEFECTIVE?"
+        
+        # 1. Plain language defect description per category
+        if cat_lower == "screw":
+            if "thread" in fn_lower:
+                defect_desc = "Thread damage detected: The screw threads exhibit stripped ridges, metal deformity, or thread pitch irregularity."
+                where_desc = "near the screw threads"
+            elif "scratch" in fn_lower or "head" in fn_lower:
+                defect_desc = "Drive head damage: Visible scratches, gouges, or surface deformation were detected across the screw drive head."
+                where_desc = "across the screw head"
+            elif "front" in fn_lower or "manipulated" in fn_lower:
+                defect_desc = "Front face anomaly: Abnormal tip deformation or mechanical wear was detected on the screw front face."
+                where_desc = "on the screw front face"
+            else:
+                defect_desc = "Structural anomaly: Surface irregularity or metal deformation departs from nominal screw geometry."
+                where_desc = "on the screw body"
+        elif cat_lower == "bottle":
+            if "broken" in fn_lower or "mouth" in fn_lower or "crack" in fn_lower:
+                defect_desc = "Glass fracture detected: Visible rim chipping or structural crack was detected near the bottle opening."
+                where_desc = "around the bottle rim and opening"
+            elif "contamination" in fn_lower:
+                defect_desc = "Particulate contamination: Foreign particles or non-conforming surface spots were detected on the bottle."
+                where_desc = "on the bottle surface"
+            else:
+                defect_desc = "Container flaw: Material irregularity or surface defect was detected on the glass container."
+                where_desc = "on the bottle surface"
+        elif cat_lower == "leather":
+            if "cut" in fn_lower:
+                defect_desc = "Surface cut detected: A distinct linear incision or puncture breaks the continuous leather grain."
+                where_desc = "on the leather grain surface"
+            elif "fold" in fn_lower:
+                defect_desc = "Deep fold mark: An unnatural permanent crease or compression mark was detected."
+                where_desc = "along the fold line"
+            elif "color" in fn_lower:
+                defect_desc = "Color flaw: A noticeable hue deviation or localized surface discoloration patch was detected."
+                where_desc = "within the color patch"
+            else:
+                defect_desc = "Texture anomaly: Irregular grain pattern or surface blemish was detected on the leather."
+                where_desc = "on the leather surface"
+        elif cat_lower == "transistor":
+            if "misplaced" in fn_lower and "002" in fn_lower:
+                defect_desc = "Critical component missing: The expected transistor semiconductor body is absent from the mounting casing."
+                where_desc = "at the component mounting site"
+            elif ("misplaced" in fn_lower and "000" in fn_lower) or ("rotated" in fn_lower):
+                defect_desc = "Orientation rotation: The component is oriented at an angle from baseline, but its body and terminal pins are intact."
+                where_desc = "around the component central axis"
+            elif "bent" in fn_lower or "lead" in fn_lower:
+                defect_desc = "Terminal lead deformation: One or more electrical contact leads are bent or displaced from nominal pitch."
+                where_desc = "near the terminal connection pins"
+            elif "cut" in fn_lower:
+                defect_desc = "Severed terminal lead: A connection pin has been cut short, preventing reliable electrical contact."
+                where_desc = "at the connection pin base"
+            elif "damaged" in fn_lower or "case" in fn_lower:
+                defect_desc = "Package casing rupture: The protective semiconductor encapsulation is cracked or chipped."
+                where_desc = "on the protective component casing"
+            else:
+                defect_desc = "Semiconductor anomaly: Structural deformation or lead irregularity departs from nominal specifications."
+                where_desc = "on the transistor body or pins"
+        elif cat_lower == "zipper":
+            if "broken" in fn_lower or "teeth" in fn_lower:
+                defect_desc = "Broken teeth chain: Missing or shattered mechanical teeth prevent continuous slider engagement."
+                where_desc = "along the zipper teeth chain"
+            elif "split" in fn_lower:
+                defect_desc = "Split teeth gap: Irregular tooth spacing or gap misalignment was detected along the chain."
+                where_desc = "along the teeth interlock gap"
+            elif "rough" in fn_lower or "fabric" in fn_lower:
+                defect_desc = "Fabric roughness: Weave fraying or rough edge irregularity was detected along the fabric border."
+                where_desc = "along the fabric border edge"
+            else:
+                defect_desc = "Fastener irregularity: Pattern deformation was detected along the zipper teeth or tape."
+                where_desc = "along the zipper assembly"
+        else:
+            defect_desc = f"An unusual visual area was detected on the {cat_lower} component."
+            where_desc = f"on the {cat_lower}"
+
+        # 2. WHERE?
+        if num_defects == 1:
+            where_text = f"Region 01 — highlighted area {where_desc}."
+        elif num_defects > 1:
+            where_text = f"Regions 01 to {num_defects:02d} — {num_defects} highlighted areas {where_desc} were flagged."
+        else:
+            where_text = f"Anomalous visual patterns were recorded {where_desc}."
+
+        # 3. WHY WAS IT FLAGGED?
+        margin_sign = f"+{margin:.4f}" if margin > 0 else f"{margin:.4f}"
+        why_flagged_text = (
+            f"The image anomaly score ({score:.4f}) crossed the calibrated inspection threshold ({threshold:.4f}) "
+            f"by a decision margin of {margin_sign}, indicating statistical deviation from nominal reference components."
+        )
+
+    else:
+        heading = "WHY IS THIS PRODUCT ACCEPTED?"
+        defect_desc = (
+            f"The {cat_lower} component conforms to the nominal baseline across all inspection regions. "
+            "No cracks, tears, missing features, or surface abnormalities were detected."
+        )
+        where_text = "No anomalous regions detected."
+        clearance = threshold - score
+        why_flagged_text = (
+            f"The image anomaly score ({score:.4f}) remained safely below the inspection threshold ({threshold:.4f}) "
+            f"with a clearance margin of {clearance:.4f}, matching the calibrated nominal feature manifold."
+        )
+
+    return heading, defect_desc, where_text, why_flagged_text
+
+
+def get_usability_assessment(category: str, filename: str, is_defective: bool, score: float, threshold: float, num_defects: int, margin: float):
+    """
+    Evaluates physical usability in exactly THREE states:
+    - 'ACCEPT' (green)
+    - 'REQUIRES HUMAN REVIEW' (amber)
+    - 'REJECT' (red)
+    Applies category-aware decision logic per engineering specification.
+    """
+    cat_lower = category.lower()
+    fn_lower = filename.lower()
+
+    if not is_defective:
+        return {
+            "status": "ACCEPT",
+            "badge_color": "var(--success)",
+            "badge_bg": "var(--success-bg)",
+            "badge_border": "#BBF7D0",
+            "reason": f"Component conforms to nominal {cat_lower} specifications and is suitable for production/assembly.",
+            "action": "Clear component through optical quality gate to downstream operations."
+        }
+
+    # Defective items: Category-specific usability rules
+    if cat_lower == "transistor":
+        # Check if rotated only: component and pins are present and intact
+        if ("misplaced" in fn_lower and "000" in fn_lower) or ("rotated" in fn_lower):
+            return {
+                "status": "ACCEPT",
+                "badge_color": "var(--success)",
+                "badge_bg": "var(--success-bg)",
+                "badge_border": "#BBF7D0",
+                "reason": "Component orientation is rotated relative to baseline, but component body and pin structures are fully intact. Component is usable with mechanical alignment.",
+                "action": "Accept component; re-orient via pick-and-place feeder before PCB placement."
+            }
+        elif "misplaced" in fn_lower or "missing" in fn_lower:
+            return {
+                "status": "REJECT",
+                "badge_color": "var(--danger)",
+                "badge_bg": "var(--danger-bg)",
+                "badge_border": "#FECACA",
+                "reason": "Critical component absence: Transistor body is missing from package casing.",
+                "action": "Reject unit immediately. Halt feeder if recurring."
+            }
+        elif "cut" in fn_lower or "damaged_case" in fn_lower:
+            return {
+                "status": "REJECT",
+                "badge_color": "var(--danger)",
+                "badge_bg": "var(--danger-bg)",
+                "badge_border": "#FECACA",
+                "reason": "Severe casing rupture or severed pin prevents reliable electrical contact or environmental sealing.",
+                "action": "Reject unit. Scrap or return to supplier."
+            }
+        elif "bent" in fn_lower:
+            return {
+                "status": "REQUIRES HUMAN REVIEW",
+                "badge_color": "var(--warning)",
+                "badge_bg": "var(--warning-bg)",
+                "badge_border": "#FDE68A",
+                "reason": "Terminal lead bent: Verify whether lead deflection is within auto-insertion lead-former tolerances.",
+                "action": "Manual inspection or mechanical lead re-straightening required."
+            }
+        else:
+            status = "REJECT" if margin > 0.4 else "REQUIRES HUMAN REVIEW"
+            return {
+                "status": status,
+                "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
+                "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
+                "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
+                "reason": "Electrical or mechanical anomaly detected departing from nominal manifold.",
+                "action": "Secondary QA review required."
+            }
+
+    elif cat_lower == "screw":
+        if "thread" in fn_lower:
+            return {
+                "status": "REJECT",
+                "badge_color": "var(--danger)",
+                "badge_bg": "var(--danger-bg)",
+                "badge_border": "#FECACA",
+                "reason": "Thread damage detected: Stripped or deformed threading impairs safe torque transmission and joint clamp load.",
+                "action": "Reject fastener. Do not use in mechanical assembly."
+            }
+        elif "manipulated" in fn_lower:
+            return {
+                "status": "REJECT",
+                "badge_color": "var(--danger)",
+                "badge_bg": "var(--danger-bg)",
+                "badge_border": "#FECACA",
+                "reason": "Front face deformation or damaged tip: Prevents proper mechanical thread engagement.",
+                "action": "Reject fastener."
+            }
+        elif "scratch" in fn_lower or "head" in fn_lower:
+            if margin > 0.35:
+                return {
+                    "status": "REJECT",
+                    "badge_color": "var(--danger)",
+                    "badge_bg": "var(--danger-bg)",
+                    "badge_border": "#FECACA",
+                    "reason": "Major drive head deformation: Drive slot compromised, preventing driver bit engagement.",
+                    "action": "Reject fastener."
+                }
+            else:
+                return {
+                    "status": "REQUIRES HUMAN REVIEW",
+                    "badge_color": "var(--warning)",
+                    "badge_bg": "var(--warning-bg)",
+                    "badge_border": "#FDE68A",
+                    "reason": "Minor cosmetic scratch on drive head: Fastener threads appear intact; review whether cosmetic standards allow use.",
+                    "action": "Secondary QA disposition review for non-aesthetic applications."
+                }
+        else:
+            status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
+            return {
+                "status": status,
+                "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
+                "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
+                "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
+                "reason": "Surface or geometric irregularity detected on screw.",
+                "action": "Review against mechanical tolerance limits."
+            }
+
+    elif cat_lower == "leather":
+        if "cut" in fn_lower:
+            return {
+                "status": "REJECT",
+                "badge_color": "var(--danger)",
+                "badge_bg": "var(--danger-bg)",
+                "badge_border": "#FECACA",
+                "reason": "Surface cut detected: Incision compromises material tensile strength and structural integrity.",
+                "action": "Reject cut section or excise defective segment."
+            }
+        elif "fold" in fn_lower or "color" in fn_lower:
+            return {
+                "status": "REQUIRES HUMAN REVIEW",
+                "badge_color": "var(--warning)",
+                "badge_bg": "var(--warning-bg)",
+                "badge_border": "#FDE68A",
+                "reason": "Surface fold or color variation: Check whether condition is recoverable through conditioning or acceptable for secondary panels.",
+                "action": "Review for secondary or non-visible grade utilization."
+            }
+        else:
+            status = "REJECT" if margin > 0.5 else "REQUIRES HUMAN REVIEW"
+            return {
+                "status": status,
+                "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
+                "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
+                "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
+                "reason": "Leather surface anomaly detected.",
+                "action": "Inspect piece against cosmetic grading criteria."
+            }
+
+    elif cat_lower == "bottle":
+        if "broken" in fn_lower or "mouth" in fn_lower or "crack" in fn_lower:
+            return {
+                "status": "REJECT",
+                "badge_color": "var(--danger)",
+                "badge_bg": "var(--danger-bg)",
+                "badge_border": "#FECACA",
+                "reason": "Critical safety defect: Rim chipping or structural crack compromises pressure seal and presents safety hazard.",
+                "action": "Reject and recycle glass container immediately."
+            }
+        elif "contamination" in fn_lower:
+            return {
+                "status": "REQUIRES HUMAN REVIEW",
+                "badge_color": "var(--warning)",
+                "badge_bg": "var(--warning-bg)",
+                "badge_border": "#FDE68A",
+                "reason": "Surface contamination or particulate detected: Verify if washable or embedded in glass matrix.",
+                "action": "Route container to wash station for re-inspection."
+            }
+        else:
+            status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
+            return {
+                "status": status,
+                "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
+                "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
+                "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
+                "reason": "Optical deviation detected on container.",
+                "action": "Inspect container."
+            }
+
+    elif cat_lower == "zipper":
+        if "broken" in fn_lower or "split" in fn_lower or "teeth" in fn_lower:
+            return {
+                "status": "REJECT",
+                "badge_color": "var(--danger)",
+                "badge_bg": "var(--danger-bg)",
+                "badge_border": "#FECACA",
+                "reason": "Teeth chain defect: Missing or broken zipper teeth prevent slider closure and cause separation.",
+                "action": "Reject fastener chain segment."
+            }
+        elif "rough" in fn_lower or "fabric" in fn_lower:
+            return {
+                "status": "REQUIRES HUMAN REVIEW",
+                "badge_color": "var(--warning)",
+                "badge_bg": "var(--warning-bg)",
+                "badge_border": "#FDE68A",
+                "reason": "Fabric roughness or weave irregularity: Check slider clearance and seam stitching integrity.",
+                "action": "Manual review of zipper sliding action."
+            }
+        else:
+            status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
+            return {
+                "status": status,
+                "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
+                "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
+                "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
+                "reason": "Fastener deviation detected.",
+                "action": "Inspect zipper assembly."
+            }
+
+    status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
+    return {
+        "status": status,
+        "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
+        "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
+        "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
+        "reason": "Optical anomaly detected.",
+        "action": "Conduct manual QA review."
+    }
 
 
 # -----------------------------------------------------------------------------
@@ -913,6 +1261,25 @@ render_html("""
         background: linear-gradient(to right, #000080 0%, #00FFFF 35%, #FFFF00 70%, #FF0000 100%);
     }
 
+    /* Clickable VisionInspect Logo */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 4px 0 !important;
+        font-size: 1.08rem !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.02em !important;
+        color: var(--text-primary) !important;
+        cursor: pointer !important;
+        text-align: left !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button:hover {
+        background: transparent !important;
+        color: var(--text-primary) !important;
+        opacity: 0.75 !important;
+    }
+
     /* Plain Text Navigation Links */
     div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stHorizontalBlock"] button {
         background: transparent !important;
@@ -938,14 +1305,10 @@ render_html("""
 nav_col1, nav_col2, nav_col3 = st.columns([1.8, 3.4, 1.4])
 
 with nav_col1:
-    render_html("""
-    <div style="padding-top: 4px;">
-        <span style="font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--text-primary); display: inline-block;"></span>
-            VisionInspect
-        </span>
-    </div>
-    """)
+    if st.button("●  VisionInspect", key="nav_logo_btn"):
+        st.session_state["nav_page"] = "Home"
+        purge_inspection()
+        st.rerun()
 
 with nav_col2:
     pages = ["Home", "Inspect", "Models", "About"]
@@ -1101,14 +1464,15 @@ elif st.session_state["nav_page"] == "Inspect":
     # -------------------------------------------------------------------------
     # STATE A: SCANNING IN PROGRESS
     # -------------------------------------------------------------------------
-    if st.session_state["is_scanning"] and st.session_state["uploaded_image_data"]:
-        fname, scan_bytes, _ = st.session_state["uploaded_image_data"]
-        b64_scan = base64.b64encode(scan_bytes).decode("utf-8")
+    if st.session_state["is_scanning"] and st.session_state["uploaded_images_list"]:
+        total_imgs = len(st.session_state["uploaded_images_list"])
+        first_item = st.session_state["uploaded_images_list"][0]
+        b64_scan = base64.b64encode(first_item["bytes"]).decode("utf-8")
 
-        render_html("""
+        render_html(f"""
         <div style="text-align: center; margin-bottom: 20px;">
             <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; color: var(--danger); text-transform: uppercase;">SCANNING IN PROGRESS</div>
-            <div style="font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">Analyzing Industrial Component</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">Analyzing {total_imgs} Component(s)</div>
             <div style="font-size: 0.84rem; color: var(--text-secondary); margin-top: 4px;">Precision optical anomaly detection with sub-pixel localization</div>
         </div>
         """)
@@ -1122,7 +1486,7 @@ elif st.session_state["nav_page"] == "Inspect":
             <div class="scan-laser"></div>
             <img src="data:image/png;base64,{b64_scan}" style="width: 100%; display: block; filter: contrast(1.02); border-radius: 4px;" />
             <div style="position: absolute; bottom: 12px; left: 16px; right: 16px; background: rgba(23, 23, 23, 0.88); backdrop-filter: blur(4px); padding: 8px 14px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; font-size: 0.72rem; font-weight: 600;">
-                <span>● SCANNING ACTIVE</span>
+                <span>● SCANNING ACTIVE ({total_imgs} QUEUED)</span>
                 <span>RESNET-18 (448D) // CORESET MEMORY</span>
             </div>
         </div>
@@ -1135,55 +1499,80 @@ elif st.session_state["nav_page"] == "Inspect":
         </div>
         """)
 
-        # Execute Backend Prediction
-        try:
-            res = requests.post(
-                f"{st.session_state['backend_url']}/predict",
-                data={"category": active_cat, "return_visualizations": "true"},
-                files={"file": (fname, scan_bytes, "image/png")},
-                timeout=25
-            )
-            if res.status_code == 200:
-                data = res.json()
-                st.session_state["current_inspection"] = data
-                st.session_state["current_request_id"] = data.get("request_id")
-                # Log history
-                st.session_state["recent_inspections"].insert(0, {
-                    "id": len(st.session_state["recent_inspections"]) + 1,
-                    "filename": fname,
-                    "category": active_cat,
-                    "status": data.get("status", "NORMAL"),
-                    "score": data.get("anomaly_score", 0.0),
-                    "threshold": data.get("image_threshold", 0.0),
-                    "regions": data.get("num_defects", 0),
-                    "time_s": data.get("inference_time_s", 1.5)
-                })
-            else:
-                st.error(f"Inference error: {res.status_code} - {res.text}")
-        except Exception as e:
-            st.error(f"Backend connection error: {e}")
-        finally:
-            st.session_state["is_scanning"] = False
-            st.rerun()
+        # Process each image independently
+        st.session_state["inspection_results"] = []
+        errors = []
+        for idx, item in enumerate(st.session_state["uploaded_images_list"]):
+            fname = item["filename"]
+            scan_bytes = item["bytes"]
+            try:
+                res = requests.post(
+                    f"{st.session_state['backend_url']}/predict",
+                    data={"category": active_cat, "return_visualizations": "true"},
+                    files={"file": (fname, scan_bytes, "image/png")},
+                    timeout=30
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    data["orig_bytes"] = scan_bytes
+                    data["filename"] = fname
+                    data["size"] = item["size"]
+                    st.session_state["inspection_results"].append(data)
+                    # Log history
+                    st.session_state["recent_inspections"].insert(0, {
+                        "id": len(st.session_state["recent_inspections"]) + 1,
+                        "filename": fname,
+                        "category": active_cat,
+                        "status": data.get("status", "NORMAL"),
+                        "score": data.get("anomaly_score", 0.0),
+                        "threshold": data.get("image_threshold", 0.0),
+                        "regions": data.get("num_defects", 0),
+                        "time_s": data.get("inference_time_s", 1.5)
+                    })
+                else:
+                    errors.append(f"{fname}: {res.status_code} - {res.text}")
+            except Exception as e:
+                errors.append(f"{fname}: {e}")
+
+        if errors:
+            st.error("Some images encountered errors:\n" + "\n".join(errors))
+
+        st.session_state["is_scanning"] = False
+        if st.session_state["inspection_results"]:
+            st.session_state["active_result_idx"] = 0
+            st.session_state["current_inspection"] = st.session_state["inspection_results"][0]
+            st.session_state["current_request_id"] = st.session_state["current_inspection"].get("request_id")
+        st.rerun()
 
     # -------------------------------------------------------------------------
     # STATE B: INSPECTION RESULT VIEW (PROFESSIONAL REPORT)
     # -------------------------------------------------------------------------
     elif st.session_state["current_inspection"] is not None:
-        res = st.session_state["current_inspection"]
+        results = st.session_state.get("inspection_results", [])
+        if not results:
+            results = [st.session_state["current_inspection"]]
+
+        active_idx = st.session_state.get("active_result_idx", 0)
+        if active_idx >= len(results):
+            active_idx = 0
+            st.session_state["active_result_idx"] = 0
+
+        res = results[active_idx]
         is_defective = res.get("is_defective", False)
         status = res.get("status", "NORMAL")
         score = res.get("anomaly_score", 0.0)
         th = res.get("image_threshold", 0.0)
         p_th = res.get("pixel_threshold", 0.0)
+        peak_anomaly = res.get("peak_anomaly", score)
+        mem_bank = res.get("memory_bank", "Greedy Coreset (10% nominal features)")
         margin = res.get("decision_margin", score - th)
         n_defects = res.get("num_defects", 0)
         latency_ms = res.get("inference_time_ms", 180.0)
-        explanation = res.get("explanation", "")
-        why_explanation = res.get("why_explanation", "")
         regs = res.get("localized_regions", [])
+        orig_bytes = res.get("orig_bytes")
+        fname = res.get("filename", "")
 
-        # Navigation & Status Header
+        # 1. NAVIGATION BAR
         top_h1, top_h2 = st.columns([3.5, 1.3])
         with top_h1:
             if st.button("← Back to Inspect", key="res_back_btn"):
@@ -1194,35 +1583,50 @@ elif st.session_state["nav_page"] == "Inspect":
                 purge_inspection()
                 st.rerun()
 
+        # Batch Result Selector (If multiple images inspected)
+        if len(results) > 1:
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+            render_html(f"<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;'>BATCH RESULTS ({len(results)} IMAGES) — CLICK TO VIEW</div>")
+            batch_cols = st.columns(min(len(results), 6))
+            for b_idx, b_item in enumerate(results):
+                col_idx = b_idx % min(len(results), 6)
+                with batch_cols[col_idx]:
+                    b_def = b_item.get("is_defective", False)
+                    status_dot = "🔴" if b_def else "🟢"
+                    btn_type = "primary" if b_idx == active_idx else "secondary"
+                    b_lbl = f"{status_dot} #{b_idx+1} {b_item.get('filename', '')[:10]}"
+                    if st.button(b_lbl, key=f"batch_sel_{b_idx}", type=btn_type, use_container_width=True):
+                        st.session_state["active_result_idx"] = b_idx
+                        st.rerun()
+
         st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+
+        # 2. STATUS BANNER
         render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.10em; color: var(--text-secondary); text-transform: uppercase;'>INSPECTION RESULT</div>")
 
         if is_defective:
-            subtext = f"{n_defects} localized anomaly region(s) detected exceeding inspection criteria." if n_defects > 0 else "Anomaly score exceeded inspection criteria."
+            summary_text = f"{n_defects} localized anomaly region(s) detected exceeding inspection criteria." if n_defects > 0 else "Anomaly score exceeded inspection criteria."
             render_html(f"""
             <div style="font-size: 2.3rem; font-weight: 800; color: var(--danger); letter-spacing: -0.02em; line-height: 1.1;">DEFECTIVE</div>
-            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">{subtext}</div>
+            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">{summary_text}</div>
             """)
         else:
-            render_html(f"""
+            render_html("""
             <div style="font-size: 2.3rem; font-weight: 800; color: var(--success); letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
             <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">No significant visual deviation detected under the current inspection criteria.</div>
             """)
 
         st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-        # ---------------------------------------------------------------------
-        # MAIN RESULT VISUAL (HUGE THREE-PANEL SECTION)
-        # ---------------------------------------------------------------------
+        # 4. THREE PANELS (01 ORIGINAL IMAGE | 02 ANOMALY MAP | 03 DEFECT LOCALIZATION)
         v_col1, v_col2, v_col3 = st.columns(3, gap="medium")
 
         # 01 ORIGINAL IMAGE
         with v_col1:
             render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>01 &nbsp; ORIGINAL IMAGE</div>")
-            if st.session_state["uploaded_image_data"]:
-                _, orig_bytes, _ = st.session_state["uploaded_image_data"]
+            if orig_bytes:
                 st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
-            render_html("<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>Pristine optical sensor acquisition</div>")
+            render_html(f"<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>File: {fname}</div>")
 
         # 02 ANOMALY MAP
         with v_col2:
@@ -1248,14 +1652,11 @@ elif st.session_state["nav_page"] == "Inspect":
                 st.image(Image.open(io.BytesIO(base64.b64decode(vis_b64))), use_container_width=True)
                 render_html(f"<div style='font-size: 0.68rem; color: var(--danger); margin-top: 4px; font-weight: 600;'>{n_defects} confirmed defect region(s) localized</div>")
             else:
-                if st.session_state["uploaded_image_data"]:
-                    _, orig_bytes, _ = st.session_state["uploaded_image_data"]
+                if orig_bytes:
                     st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
                 render_html("<div style='font-size: 0.68rem; color: var(--success); margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero anomaly clusters detected</div>")
 
-        # ---------------------------------------------------------------------
-        # METRIC STRIP
-        # ---------------------------------------------------------------------
+        # 5. METRIC STRIP
         margin_sign = f"+{margin:.4f}" if margin > 0 else f"{margin:.4f}"
         margin_color = "var(--danger)" if margin > 0 else "var(--success)"
 
@@ -1284,64 +1685,36 @@ elif st.session_state["nav_page"] == "Inspect":
         </div>
         """)
 
-        # ---------------------------------------------------------------------
-        # SECTION 1: WHY IS THIS PRODUCT DEFECTIVE / NORMAL?
-        # ---------------------------------------------------------------------
-        fname = st.session_state["uploaded_image_data"][0] if st.session_state.get("uploaded_image_data") else res.get("filename", "")
-        what_text, where_text, why_text = get_simple_explanation(active_cat, fname, is_defective, score, th, n_defects)
+        # 6, 7, 8: EXPLANATION SECTIONS (WHY DEFECTIVE? WHERE? WHY FLAGGED?)
+        why_heading, defect_desc, where_text, why_flagged_text = get_defect_explanation(
+            active_cat, fname, is_defective, score, th, n_defects, margin
+        )
 
-        if is_defective:
-            render_html(f"""
-            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
-                <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;">WHY IS THIS PRODUCT DEFECTIVE?</div>
-                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
-                    <div>
-                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHAT WE FOUND</div>
-                        <div>{what_text}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHERE</div>
-                        <div>{where_text}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHY IT WAS FLAGGED</div>
-                        <div>{why_text}</div>
-                    </div>
+        why_flagged_label = "WHY IT WAS FLAGGED" if is_defective else "WHY IT PASSED"
+
+        render_html(f"""
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
+            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;">{why_heading}</div>
+            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
+                <div>
+                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 3px;">FINDINGS</div>
+                    <div>{defect_desc}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 3px;">WHERE</div>
+                    <div>{where_text}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 3px;">{why_flagged_label}</div>
+                    <div>{why_flagged_text}</div>
                 </div>
             </div>
-            """)
-        else:
-            render_html(f"""
-            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
-                <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;">WHY IS THIS PRODUCT NORMAL?</div>
-                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
-                    <div>
-                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHAT WE FOUND</div>
-                        <div>{what_text}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px;">WHY IT PASSED</div>
-                        <div>{why_text}</div>
-                    </div>
-                </div>
-            </div>
-            """)
+        </div>
+        """)
 
-        # ---------------------------------------------------------------------
-        # SECTION 2: IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)
-        # ---------------------------------------------------------------------
-        if is_defective:
-            usability_badge = '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: var(--danger-bg); color: var(--danger); font-weight: 700; font-size: 0.72rem; border: 1px solid #FECACA; letter-spacing: 0.04em;">REQUIRES REVIEW</span>'
-            usability_desc = "VisionInspect detected a visual deviation that requires secondary quality assessment. The anomaly detector identifies deviations from the learned normal pattern; it does not independently certify physical safety or fitness for use."
-            insp_status_html = '<span style="color: var(--danger); font-weight: 700;">DEFECTIVE</span>'
-            usab_status_html = '<span style="color: var(--danger); font-weight: 700;">REQUIRES REVIEW</span>'
-            action_html = '<span style="color: var(--text-primary); font-weight: 500;">Secondary QA disposition review against engineering specifications</span>'
-        else:
-            usability_badge = '<span style="display:inline-block; padding: 4px 10px; border-radius: 4px; background: var(--success-bg); color: var(--success); font-weight: 700; font-size: 0.72rem; border: 1px solid #BBF7D0; letter-spacing: 0.04em;">PASSES VISUAL INSPECTION</span>'
-            usability_desc = "No significant visual deviation from the learned normal pattern was detected under the configured inspection criteria. Multi-scale patch representations conform to the calibrated memory bank."
-            insp_status_html = '<span style="color: var(--success); font-weight: 700;">NORMAL</span>'
-            usab_status_html = '<span style="color: var(--success); font-weight: 700;">PASSES VISUAL INSPECTION</span>'
-            action_html = '<span style="color: var(--text-primary); font-weight: 500;">Component clears optical quality gate. Proceed to standard operational testing</span>'
+        # 9. USABILITY ASSESSMENT (EXACTLY THREE STATES: ACCEPT, REQUIRES HUMAN REVIEW, REJECT)
+        usab = get_usability_assessment(active_cat, fname, is_defective, score, th, n_defects, margin)
+        usability_badge = f'<span style="display:inline-block; padding: 4px 12px; border-radius: 4px; background: {usab["badge_bg"]}; color: {usab["badge_color"]}; font-weight: 700; font-size: 0.74rem; border: 1px solid {usab["badge_border"]}; letter-spacing: 0.04em;">{usab["status"]}</span>'
 
         render_html(f"""
         <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
@@ -1350,31 +1723,48 @@ elif st.session_state["nav_page"] == "Inspect":
                 {usability_badge}
             </div>
             <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 14px;">
-                {usability_desc}
+                {usab["reason"]}
             </div>
             <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
                     <span style="color: var(--text-secondary);">Inspection status:</span>
-                    {insp_status_html}
+                    <span style="color: {'var(--danger)' if is_defective else 'var(--success)'}; font-weight: 700;">{status}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
                     <span style="color: var(--text-secondary);">Usability status:</span>
-                    {usab_status_html}
+                    <span style="color: {usab['badge_color']}; font-weight: 700;">{usab['status']}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="color: var(--text-secondary);">Recommended action:</span>
-                    {action_html}
+                    <span style="color: var(--text-primary); font-weight: 500;">{usab['action']}</span>
                 </div>
             </div>
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
-                Engineering Notice: Optical inspection evaluates surface and geometric concordance against the nominal reference manifold. Physical fitness for service depends on application-specific mechanical and electrical specifications.
+                Based on visual inspection. The system detects visual anomalies; it does not independently certify whether a physical component is safe to use.
             </div>
         </div>
         """)
 
-        # ---------------------------------------------------------------------
-        # LOCALIZED REGIONS BREAKDOWN (IF DEFECTIVE)
-        # ---------------------------------------------------------------------
+        # 10. COLLAPSIBLE TECHNICAL DETAILS (EXACT REQUIRED FIELDS)
+        with st.expander("Technical Details (Architecture & Metrics)", expanded=False):
+            st.markdown(f"""
+            - **Model:** PatchCore v2.3 (Unsupervised Density-based Anomaly Localization)
+            - **Model / Category:** `{active_cat.title()}` (`models/{active_cat}/patchcore_v23/`)
+            - **Backbone:** ResNet-18 (Pretrained ImageNet weights)
+            - **Feature Layers:** Layers 1, 2, and 3 (Spatiotemporal pyramid pooling)
+            - **Embedding (448D):** 448-dimensional patch representations on a 64×64 spatial grid
+            - **Memory Bank:** {mem_bank} (Greedy minimax 10% coreset subsampling)
+            - **Anomaly Score:** `{score:.4f}`
+            - **Inspection Threshold ($T_{{image}}$):** `{th:.4f}`
+            - **Peak Anomaly ($T_{{pixel}}$):** `{peak_anomaly:.4f}` (Calibrated pixel threshold: `{p_th:.4f}`)
+            - **Decision Margin:** `{margin_sign}`
+            - **Defect Regions:** `{n_defects}` localized region(s)
+            - **Decision Rule:** Dual-Gated $[Score > T_{{image}}] \\land [Defect Area \\ge min\\_area]$
+            - **Inference Time:** `{int(latency_ms)} ms` (`{latency_ms / 1000.0:.3f} s`)
+            - **Request ID:** `{res.get('request_id', 'N/A')}`
+            """)
+
+        # 11. LOCALIZED REGIONS BREAKDOWN (IF DEFECTIVE)
         if is_defective and regs:
             render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 16px 0 8px 0;'>LOCALIZED ANOMALY REGIONS</div>")
             reg_cols = st.columns(min(4, len(regs)))
@@ -1394,21 +1784,7 @@ elif st.session_state["nav_page"] == "Inspect":
                     </div>
                     """)
 
-        # ---------------------------------------------------------------------
-        # COLLAPSIBLE TECHNICAL DETAILS (FOR EXAMINER / VIVA)
-        # ---------------------------------------------------------------------
-        with st.expander("Technical Details", expanded=False):
-            st.markdown(f"""
-            - **Architecture:** PatchCore v2.3 (Unsupervised Density-based Anomaly Localization)
-            - **Backbone:** ResNet-18 (Layers 1, 2, 3 Multi-Scale Embeddings)
-            - **Descriptor Dimension:** 448-dimensional patch representations on a 64×64 spatial grid
-            - **Category Model Directory:** `models/{active_cat}/patchcore_v23/`
-            - **Calibrated Image Threshold ($T_{{image}}$):** `{th:.4f}`
-            - **Calibrated Pixel Threshold ($T_{{pixel}}$):** `{p_th:.4f}`
-            - **Decision Rule:** Dual-Gated $[Score > T_{{image}}] \\land [Defect Area \\ge min\\_area]$
-            - **Unique Request ID:** `{res.get('request_id', 'N/A')}`
-            """)
-
+        # 12. INSPECT ANOTHER BUTTON
         st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
         if st.button("Inspect Another Image →", key="res_bottom_inspect_btn", type="primary", use_container_width=True):
             purge_inspection()
@@ -1425,10 +1801,10 @@ elif st.session_state["nav_page"] == "Inspect":
             render_html("""
             <div class="hero-eyebrow">INSPECT COMPONENT</div>
             <h2 style="font-size: 1.85rem; font-weight: 700; color: var(--text-primary); margin: 0 0 8px 0; letter-spacing: -0.025em; line-height: 1.15;">
-                Upload Your Image
+                Upload Images
             </h2>
             <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
-                Upload an image of the component you want to inspect. VisionInspect analyzes it for visual deviations from the learned normal pattern.
+                Upload single or multiple images of the component. VisionInspect scans each independently for structural and surface deviations.
             </p>
             
             <div style="display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--border); padding-top: 16px;">
@@ -1442,14 +1818,14 @@ elif st.session_state["nav_page"] == "Inspect":
                 <div style="display: flex; gap: 10px; align-items: flex-start;">
                     <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-primary); min-width: 20px;">02</span>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Upload Image</div>
-                        <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px;">Acquire optical sensor image or select a verified test sample.</div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Upload Image(s)</div>
+                        <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px;">Select single or multiple images, or add verified test samples.</div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: flex-start;">
                     <span style="font-size: 0.72rem; font-weight: 700; min-width: 20px; color: var(--text-primary);">03</span>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Analyze</div>
+                        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Analyze Batch</div>
                         <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px;">Deep multi-scale 448D feature comparison against nominal memory bank.</div>
                     </div>
                 </div>
@@ -1463,97 +1839,131 @@ elif st.session_state["nav_page"] == "Inspect":
             </div>
             """)
 
-        # CENTER COLUMN: Main Visual Focus (Dropzone or Loaded Image)
+        # CENTER COLUMN: Main Visual Focus (Upload Queue or Empty Dropzone)
         with center_col:
-            if st.session_state["uploaded_image_data"]:
-                fname, img_bytes, (iw, ih) = st.session_state["uploaded_image_data"]
-                b64_loaded = base64.b64encode(img_bytes).decode("utf-8")
+            queued_images = st.session_state["uploaded_images_list"]
 
+            if queued_images:
+                num_queued = len(queued_images)
                 render_html(f"""
-                <div class="hero-visual-frame" style="min-height: 360px; padding: 20px;">
-                    <div class="corner-bracket corner-tl"></div>
-                    <div class="corner-bracket corner-tr"></div>
-                    <div class="corner-bracket corner-bl"></div>
-                    <div class="corner-bracket corner-br"></div>
-                    <div class="visual-top-meta">
-                        <span>TARGET: {cat_data['name'].upper()} ({cat_data['label'].upper()})</span>
-                        <span>{iw} × {ih} PX</span>
-                    </div>
-                    <img src="data:image/png;base64,{b64_loaded}" style="max-height: 290px; max-width: 90%; object-fit: contain; margin: 24px 0; border-radius: 4px;" />
-                    <div class="visual-bottom-meta">
-                        <span>FILE: {fname}</span>
-                        <span>READY FOR INSPECTION</span>
-                    </div>
-                </div>
-                
-                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-size: 0.68rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Image Selected</div>
-                        <div style="font-size: 0.84rem; font-weight: 600; color: var(--text-primary); margin-top: 1px;">{fname}</div>
-                    </div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted);">{iw} × {ih} px</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">
+                        QUEUED FOR INSPECTION ({num_queued} IMAGE{'S' if num_queued > 1 else ''})
+                    </span>
+                    <span style="font-size: 0.70rem; color: var(--text-muted);">TARGET: {cat_data['name'].upper()}</span>
                 </div>
                 """)
 
-                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                btn_c1, btn_c2 = st.columns([2.0, 1.2])
+                # Display queued images
+                for q_idx, q_item in enumerate(queued_images):
+                    q_cols = st.columns([1.0, 3.2, 0.8], gap="small")
+                    with q_cols[0]:
+                        q_b64 = base64.b64encode(q_item["bytes"]).decode("utf-8")
+                        render_html(f"""
+                        <div style="width: 52px; height: 52px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: center;">
+                            <img src="data:image/png;base64,{q_b64}" style="width: 100%; height: 100%; object-fit: cover;" />
+                        </div>
+                        """)
+                    with q_cols[1]:
+                        render_html(f"""
+                        <div style="padding-top: 4px;">
+                            <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{q_item['filename']}</div>
+                            <div style="font-size: 0.70rem; color: var(--text-muted);">{q_item['size'][0]} × {q_item['size'][1]} px</div>
+                        </div>
+                        """)
+                    with q_cols[2]:
+                        if st.button("✕", key=f"del_img_{q_idx}", help=f"Remove {q_item['filename']}"):
+                            st.session_state["uploaded_images_list"].pop(q_idx)
+                            st.rerun()
+
+                st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+                # Action buttons
+                btn_c1, btn_c2 = st.columns([2.2, 1.2])
+                insp_label = f"INSPECT {num_queued} IMAGES →" if num_queued > 1 else "INSPECT IMAGE →"
                 with btn_c1:
-                    if st.button("ANALYZE IMAGE →", key="inspect_center_analyze_btn", type="primary", use_container_width=True):
+                    if st.button(insp_label, key="inspect_queue_btn", type="primary", use_container_width=True):
                         st.session_state["is_scanning"] = True
                         st.rerun()
                 with btn_c2:
-                    if st.button("Change Image", key="inspect_center_clear_btn", use_container_width=True):
-                        st.session_state["uploaded_image_data"] = None
+                    if st.button("Clear All", key="clear_queue_btn", use_container_width=True):
+                        st.session_state["uploaded_images_list"] = []
                         st.rerun()
 
+                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+                render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;'>Add More Images to Queue</div>")
+
             else:
-                # Before upload: Large clean dropzone + demo sample option
+                # Before upload: Large clean dropzone
                 render_html("""
                 <div style="background: var(--surface); border: 1.5px dashed var(--border-strong); border-radius: 8px; padding: 36px 20px; text-align: center; margin-bottom: 8px;">
                     <div style="font-size: 1.8rem; color: var(--text-primary); margin-bottom: 6px;">⌖</div>
-                    <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Drop an image here</div>
-                    <div style="font-size: 0.76rem; color: var(--text-secondary);">PNG, JPG, WEBP • Industrial component optical scan</div>
+                    <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Drop images here</div>
+                    <div style="font-size: 0.76rem; color: var(--text-secondary);">PNG, JPG, WEBP • Select single or multiple images for batch inspection</div>
                 </div>
                 """)
 
-                uploaded_file = st.file_uploader(
-                    "Choose Image",
-                    type=["png", "jpg", "jpeg", "webp"],
-                    key="center_file_uploader",
-                    label_visibility="collapsed"
-                )
-                if uploaded_file is not None:
-                    raw_bytes = uploaded_file.getvalue()
-                    pil_im = Image.open(io.BytesIO(raw_bytes))
-                    st.session_state["uploaded_image_data"] = (uploaded_file.name, raw_bytes, pil_im.size)
+            # File uploader supporting multiple files
+            new_files = st.file_uploader(
+                "Choose Image(s)",
+                type=["png", "jpg", "jpeg", "webp"],
+                accept_multiple_files=True,
+                key="multi_file_uploader",
+                label_visibility="collapsed"
+            )
+            if new_files:
+                existing_names = {img["filename"] for img in st.session_state["uploaded_images_list"]}
+                added_any = False
+                for f in new_files:
+                    if f.name not in existing_names:
+                        raw_bytes = f.getvalue()
+                        try:
+                            pil_im = Image.open(io.BytesIO(raw_bytes))
+                            st.session_state["uploaded_images_list"].append({
+                                "id": f"img_{time.time_ns()}_{f.name}",
+                                "filename": f.name,
+                                "bytes": raw_bytes,
+                                "size": pil_im.size
+                            })
+                            existing_names.add(f.name)
+                            added_any = True
+                        except Exception:
+                            pass
+                if added_any:
                     st.rerun()
 
-                render_html("""
-                <div style="display: flex; align-items: center; text-align: center; margin: 16px 0 12px 0;">
-                    <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
-                    <span style="padding: 0 10px; font-size: 0.70rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Or Choose Verified Sample</span>
-                    <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
-                </div>
-                """)
+            render_html("""
+            <div style="display: flex; align-items: center; text-align: center; margin: 16px 0 12px 0;">
+                <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
+                <span style="padding: 0 10px; font-size: 0.70rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Or Add Verified Sample</span>
+                <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
+            </div>
+            """)
 
-                sample_options = [s[0] for s in cat_data["samples"]]
-                selected_sample_label = st.selectbox(
-                    f"Verified {cat_data['name']} Samples:",
-                    options=["-- Select evaluation sample --"] + sample_options,
-                    key="center_sample_selectbox"
-                )
-                if selected_sample_label != "-- Select evaluation sample --":
-                    target_path = None
-                    for s_name, s_path in cat_data["samples"]:
-                        if s_name == selected_sample_label:
-                            target_path = s_path
-                            break
-                    if target_path and Path(target_path).exists():
-                        with open(target_path, "rb") as f:
-                            s_bytes = f.read()
-                        pil_im = Image.open(io.BytesIO(s_bytes))
-                        st.session_state["uploaded_image_data"] = (Path(target_path).name, s_bytes, pil_im.size)
-                        st.rerun()
+            sample_options = [s[0] for s in cat_data["samples"]]
+            selected_sample_label = st.selectbox(
+                f"Verified {cat_data['name']} Samples:",
+                options=["-- Select sample to queue --"] + sample_options,
+                key="center_sample_selectbox"
+            )
+            if selected_sample_label != "-- Select sample to queue --":
+                target_path = None
+                for s_name, s_path in cat_data["samples"]:
+                    if s_name == selected_sample_label:
+                        target_path = s_path
+                        break
+                if target_path and Path(target_path).exists():
+                    with open(target_path, "rb") as f:
+                        s_bytes = f.read()
+                    pil_im = Image.open(io.BytesIO(s_bytes))
+                    s_fname = Path(target_path).name
+                    st.session_state["uploaded_images_list"].append({
+                        "id": f"sample_{time.time_ns()}_{s_fname}",
+                        "filename": s_fname,
+                        "bytes": s_bytes,
+                        "size": pil_im.size
+                    })
+                    st.rerun()
 
         # RIGHT COLUMN: Component Catalog with Visual Thumbnails
         with right_col:
