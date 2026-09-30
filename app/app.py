@@ -968,6 +968,7 @@ render_html("""
        ========================================================================= */
     :root {
         --scan-cycle: 6.5s;
+        --total-cycle: 13.0s;
     }
 
     .live-inspection-frame {
@@ -991,11 +992,12 @@ render_html("""
         display: inline-flex;
         align-items: center;
         justify-content: flex-end;
-        min-width: 140px;
+        min-width: 150px;
         height: 18px;
     }
 
     .status-scanning,
+    .status-perfect,
     .status-detected {
         position: absolute;
         right: 0;
@@ -1012,7 +1014,7 @@ render_html("""
 
     .status-scanning {
         color: var(--text-secondary);
-        animation: statusScanningAnim var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation: statusScanningAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
     .scanning-pulse-dot {
@@ -1024,9 +1026,20 @@ render_html("""
         animation: pulseDot 1.2s ease-in-out infinite alternate;
     }
 
+    .status-perfect {
+        color: #16A34A;
+        animation: statusPerfectAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .perfect-badge-dot {
+        font-size: 0.75rem;
+        line-height: 1;
+        font-weight: 800;
+    }
+
     .status-detected {
         color: #DC2626;
-        animation: statusDetectedAnim var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation: statusDetectedAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
     .detected-badge-dot {
@@ -1042,7 +1055,8 @@ render_html("""
         margin: 26px auto;
         overflow: hidden;
         line-height: 0;
-        border-radius: 4px;
+        border-radius: 6px;
+        background: transparent;
     }
 
     .scanner-carton-img {
@@ -1053,14 +1067,30 @@ render_html("""
         border-radius: 4px;
     }
 
-    /* Laser Scanning Beam */
+    .carton-perfect {
+        position: relative;
+        z-index: 1;
+        animation: perfectImgAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .carton-damaged {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        animation: damagedImgAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    /* Laser Scanning Beam — KEEPING EXACT EXISTING SCAN ANIMATION */
     .scanner-laser-line {
         position: absolute;
         left: 0;
         width: 100%;
         height: 2px;
         pointer-events: none;
-        z-index: 5;
+        z-index: 6;
         animation: laserScanMove var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
@@ -1093,16 +1123,66 @@ render_html("""
         pointer-events: none;
     }
 
-    /* Defect Detection Zone & Reticle */
+    /* PERFECT Result Stamp */
+    .scanner-perfect-zone {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 5;
+        animation: perfectStampAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .perfect-stamp {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 22px;
+        background: rgba(22, 163, 74, 0.15);
+        border: 1.5px solid #16A34A;
+        border-radius: 4px;
+        box-shadow: 0 0 16px rgba(22, 163, 74, 0.30);
+        backdrop-filter: blur(3px);
+        text-align: center;
+    }
+
+    .perfect-stamp-icon {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #16A34A;
+        line-height: 1;
+        margin-bottom: 2px;
+    }
+
+    .perfect-stamp-text {
+        font-size: 0.80rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        color: #16A34A;
+        line-height: 1.2;
+    }
+
+    .perfect-stamp-sub {
+        font-size: 0.58rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: #22C55E;
+        margin-top: 3px;
+        white-space: nowrap;
+    }
+
+    /* Defect Detection Zone & Reticle (Exact damage coordinates) */
     .scanner-defect-zone {
         position: absolute;
-        top: 15%;
-        left: 46.5%;
-        width: 18.5%;
-        height: 22.5%;
+        top: 29.5%;
+        left: 22.0%;
+        width: 35.5%;
+        height: 42.0%;
         pointer-events: none;
-        z-index: 4;
-        animation: defectBoxAnim var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        z-index: 5;
+        animation: defectBoxAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
     .defect-reticle {
@@ -1110,7 +1190,7 @@ render_html("""
         height: 100%;
         border: 1.5px solid #DC2626;
         border-radius: 2px;
-        background: rgba(220, 38, 38, 0.06);
+        background: rgba(220, 38, 38, 0.08);
         position: relative;
         box-sizing: border-box;
     }
@@ -1149,7 +1229,7 @@ render_html("""
         font-size: 0.62rem;
         font-weight: 700;
         letter-spacing: 0.06em;
-        color: #DC2626;
+        color: #DC2626 !important;
     }
 
     /* Animation Keyframes */
@@ -1192,48 +1272,110 @@ render_html("""
         }
     }
 
-    @keyframes defectBoxAnim {
-        0%, 28% {
-            opacity: 0;
-            transform: scale(0.96);
-        }
-        32%, 58% {
+    @keyframes perfectImgAnim {
+        0%, 45% {
             opacity: 1;
-            transform: scale(1.0);
         }
-        64%, 100% {
+        50%, 95% {
             opacity: 0;
-            transform: scale(0.98);
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+
+    @keyframes damagedImgAnim {
+        0%, 45% {
+            opacity: 0;
+        }
+        50%, 95% {
+            opacity: 1;
+        }
+        100% {
+            opacity: 0;
         }
     }
 
     @keyframes statusScanningAnim {
-        0%, 28% {
+        0%, 37% {
             opacity: 1;
             pointer-events: auto;
         }
-        32%, 58% {
+        40%, 49% {
             opacity: 0;
             pointer-events: none;
         }
-        64%, 100% {
+        50%, 66% {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        69%, 95% {
+            opacity: 0;
+            pointer-events: none;
+        }
+        98%, 100% {
             opacity: 1;
             pointer-events: auto;
         }
     }
 
-    @keyframes statusDetectedAnim {
-        0%, 28% {
+    @keyframes statusPerfectAnim {
+        0%, 37% {
             opacity: 0;
             pointer-events: none;
         }
-        32%, 58% {
+        40%, 47% {
             opacity: 1;
             pointer-events: auto;
         }
-        64%, 100% {
+        49%, 100% {
             opacity: 0;
             pointer-events: none;
+        }
+    }
+
+    @keyframes perfectStampAnim {
+        0%, 37% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+        40%, 47% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.0);
+        }
+        49%, 100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.98);
+        }
+    }
+
+    @keyframes statusDetectedAnim {
+        0%, 66% {
+            opacity: 0;
+            pointer-events: none;
+        }
+        69%, 94% {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        97%, 100% {
+            opacity: 0;
+            pointer-events: none;
+        }
+    }
+
+    @keyframes defectBoxAnim {
+        0%, 66% {
+            opacity: 0;
+            transform: scale(0.96);
+        }
+        69%, 94% {
+            opacity: 1;
+            transform: scale(1.0);
+        }
+        97%, 100% {
+            opacity: 0;
+            transform: scale(0.98);
         }
     }
 
@@ -1259,7 +1401,11 @@ render_html("""
             opacity: 1 !important;
             transform: none !important;
         }
-        .status-scanning {
+        .scanner-perfect-zone {
+            animation: none !important;
+            display: none !important;
+        }
+        .status-scanning, .status-perfect {
             animation: none !important;
             display: none !important;
         }
@@ -1269,6 +1415,12 @@ render_html("""
         }
         .scanning-pulse-dot {
             animation: none !important;
+        }
+        .carton-perfect {
+            display: none !important;
+        }
+        .carton-damaged {
+            opacity: 1 !important;
         }
     }
 
@@ -1550,18 +1702,30 @@ if st.session_state["nav_page"] == "Home":
         """)
 
     with hero_right:
-        carton_path = Path("assets/carton_box_clean.png")
-        if not carton_path.exists():
-            carton_path = Path("assets/carton_box_scan.png")
-        if not carton_path.exists():
-            carton_path = Path("assets/carton_box_scan.jpg")
-        if carton_path.exists():
-            with open(carton_path, "rb") as f:
-                b64_sample = base64.b64encode(f.read()).decode("utf-8")
-            img_mime = "image/png" if carton_path.suffix == ".png" else "image/jpeg"
+        perfect_path = Path("assets/carton_perfect.png")
+        if not perfect_path.exists():
+            perfect_path = Path("assets/carton_perfect.jpg")
+        damaged_path = Path("assets/carton_damaged.png")
+        if not damaged_path.exists():
+            damaged_path = Path("assets/carton_damaged.jpg")
+
+        b64_perfect = ""
+        b64_damaged = ""
+
+        if perfect_path.exists():
+            with open(perfect_path, "rb") as f:
+                b64_perfect = base64.b64encode(f.read()).decode("utf-8")
         else:
-            b64_sample = ""
-            img_mime = "image/png"
+            fallback = Path("assets/carton_box_clean.png")
+            if fallback.exists():
+                with open(fallback, "rb") as f:
+                    b64_perfect = base64.b64encode(f.read()).decode("utf-8")
+
+        if damaged_path.exists():
+            with open(damaged_path, "rb") as f:
+                b64_damaged = base64.b64encode(f.read()).decode("utf-8")
+        else:
+            b64_damaged = b64_perfect
 
         render_html(f"""
         <div class="hero-visual-frame live-inspection-frame">
@@ -1577,6 +1741,10 @@ if st.session_state["nav_page"] == "Home":
                         <span class="scanning-pulse-dot"></span>
                         <span>SCANNING</span>
                     </div>
+                    <div class="status-perfect">
+                        <span class="perfect-badge-dot">✓</span>
+                        <span>PERFECT</span>
+                    </div>
                     <div class="status-detected">
                         <span class="detected-badge-dot">●</span>
                         <span>DEFECT DETECTED</span>
@@ -1585,11 +1753,20 @@ if st.session_state["nav_page"] == "Home":
             </div>
 
             <div class="scanner-viewport">
-                <img src="data:{img_mime};base64,{b64_sample}" class="scanner-carton-img" alt="Optical Inspection" />
+                <img src="data:image/png;base64,{b64_perfect}" class="scanner-carton-img carton-perfect" alt="Optical Inspection - Reference Standard" />
+                <img src="data:image/png;base64,{b64_damaged}" class="scanner-carton-img carton-damaged" alt="Optical Inspection - Sample Component" />
                 
                 <div class="scanner-laser-line">
                     <div class="laser-core"></div>
                     <div class="laser-ambient"></div>
+                </div>
+
+                <div class="scanner-perfect-zone">
+                    <div class="perfect-stamp">
+                        <div class="perfect-stamp-icon">✓</div>
+                        <div class="perfect-stamp-text">PERFECT</div>
+                        <div class="perfect-stamp-sub">0 DEFECTS DETECTED</div>
+                    </div>
                 </div>
 
                 <div class="scanner-defect-zone">

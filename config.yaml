@@ -93,10 +93,10 @@ categories:
     image_threshold: 1.47
     pixel_threshold: 0.91
     gaussian_sigma: 1.20
-    morphology_kernel: 3
-    min_region_area: 25
-    border_margin: 5
-    merge_distance: 15.0
+    morphology_kernel: 2
+    min_region_area: 15
+    border_margin: 1
+    merge_distance: 10.0
 
   screw:
     model_dir: models/screw/patchcore_v23
@@ -104,10 +104,10 @@ categories:
     image_threshold: 2.28
     pixel_threshold: 2.00
     gaussian_sigma: 1.20
-    morphology_kernel: 3
-    min_region_area: 25
-    border_margin: 5
-    merge_distance: 15.0
+    morphology_kernel: 2
+    min_region_area: 10
+    border_margin: 1
+    merge_distance: 12.0
 
 # Phase 3.2 Category-Aware Configuration (Localization Improvements)
 # These parameters are calibrated using only normal training validation data.

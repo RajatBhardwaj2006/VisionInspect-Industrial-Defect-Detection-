@@ -360,8 +360,48 @@ class PatchCoreDetectorV23:
                 })
                 smooth_map[88:168, 88:168] = np.maximum(smooth_map[88:168, 88:168], 3.80)
         else:
-            is_defective = (score > self.image_threshold) and (len(merged_regions) > 0)
+            is_defective = bool(score > self.image_threshold)
             status = "DEFECTIVE" if is_defective else "NORMAL"
+
+            # Localization Recovery Fallback:
+            # If the image-level score exceeds the threshold, the sample is confirmed DEFECTIVE.
+            # If strict morphological filtering or boundary margins eliminated all candidate regions,
+            # adaptively recover the primary defect cluster around the maximum anomaly peak in smooth_map.
+            if is_defective and len(merged_regions) == 0:
+                peak_y, peak_x = np.unravel_index(np.argmax(smooth_map), smooth_map.shape)
+                peak_val = float(smooth_map[peak_y, peak_x])
+                adapt_th = min(peak_val * 0.70, float(self.pixel_threshold) * 0.85)
+                cand_mask = (smooth_map >= adapt_th)
+                cand_labeled, cand_num = label(cand_mask)
+                peak_comp_id = cand_labeled[peak_y, peak_x]
+                if peak_comp_id > 0:
+                    comp = (cand_labeled == peak_comp_id)
+                else:
+                    Y, X = np.ogrid[:smooth_map.shape[0], :smooth_map.shape[1]]
+                    comp = ((X - peak_x)**2 + (Y - peak_y)**2) <= 16**2
+
+                c_ys, c_xs = np.where(comp)
+                if c_ys.size > 0:
+                    rx_min, rx_max = int(c_xs.min()), int(c_xs.max())
+                    ry_min, ry_max = int(c_ys.min()), int(c_ys.max())
+                    rw = max(10, rx_max - rx_min + 1)
+                    rh = max(10, ry_max - ry_min + 1)
+                    sub_vals = smooth_map[ry_min : ry_min + rh, rx_min : rx_min + rw]
+                    sub_score = float(sub_vals.mean()) if sub_vals.size > 0 else peak_val
+                    merged_regions.append({
+                        "x": rx_min,
+                        "y": ry_min,
+                        "width": rw,
+                        "height": rh,
+                        "area": int(comp.sum()),
+                        "centroid": (float(c_xs.mean()), float(c_ys.mean())),
+                        "score": sub_score,
+                        "max_val": peak_val,
+                        "total_mass": float(comp.sum() * sub_score),
+                        "intensity": "High Anomaly",
+                        "label": "Defect Cluster 01"
+                    })
+                    clean_mask[comp] = True
 
         # Scale regions back to original image dimensions
         scale_x = orig_w / 256.0
@@ -453,15 +493,6 @@ class PatchCoreDetectorV23:
             why_text = cat_meta.get("why_defective", "The model detected visual features that differ significantly from normal patterns.")
             explanation = f"{def_text} Localized in {len(scaled_regions)} region(s)."
             why_explanation = f"{why_text} The highlighted regions indicate the strongest localized anomaly areas."
-        elif score > self.image_threshold and len(scaled_regions) == 0:
-            explanation = (
-                "An elevated anomaly signal was detected, but no localized region satisfied the final defect criteria. "
-                "Final inspection status: NORMAL."
-            )
-            why_explanation = (
-                "Although the raw feature score slightly exceeded the image threshold, no connected cluster "
-                "passed the minimum defect area and morphology requirements. The part is accepted as NORMAL."
-            )
         else:
             norm_text = cat_meta.get("normal", "No significant anomaly region was detected. The image is within the calibrated acceptance criteria.")
             why_text = cat_meta.get("why_normal", "The model found no localized region that satisfied the category's anomaly decision criteria.")
