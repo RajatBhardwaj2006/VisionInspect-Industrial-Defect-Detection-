@@ -1,0 +1,114 @@
+{
+  "category": "screw",
+  "metrics": {
+    "total_samples": 160,
+    "tp": 109,
+    "tn": 35,
+    "fp": 6,
+    "fn": 10,
+    "accuracy": 0.9,
+    "precision": 0.9478,
+    "recall": 0.916,
+    "specificity": 0.8537,
+    "f1_score": 0.9316,
+    "roc_auc": 0.9623,
+    "pr_auc": 0.9883,
+    "mean_iou": 0.1435,
+    "defect_hit_rate": 0.8319
+  },
+  "config": {
+    "model_dir": "models\\screw\\patchcore_v23",
+    "use_spatial_prior": false,
+    "score_method": "top100",
+    "image_threshold": 2.8,
+    "pixel_threshold": 2.4,
+    "border_margin": 1,
+    "min_region_area": 10
+  },
+  "target_sample": {
+    "path": "dataset\\mvtec_anomaly_detection\\screw\\test\\thread_side\\005.png",
+    "defect_type": "thread_side",
+    "stem": "005",
+    "ground_truth": "DEFECTIVE",
+    "prediction": "DEFECTIVE",
+    "score": 2.8085,
+    "threshold": 2.8,
+    "margin": 0.0085,
+    "regions_count": 2,
+    "iou": 0.1462,
+    "gt_overlap": 117,
+    "is_correct": true,
+    "regions": [
+      {
+        "x": 392,
+        "y": 408,
+        "width": 304,
+        "height": 268,
+        "area": 11456,
+        "centroid": [
+          564.226842549484,
+          553.6537274237103
+        ],
+        "score": 1.615830659866333,
+        "max_val": 2.9985849857330322,
+        "total_mass": 1156.9347524642944,
+        "intensity": "High Anomaly",
+        "label": "Region 01"
+      },
+      {
+        "x": 788,
+        "y": 768,
+        "width": 40,
+        "height": 44,
+        "area": 512,
+        "centroid": [
+          804.875,
+          788.0
+        ],
+        "score": 2.301378011703491,
+        "max_val": 2.4824159145355225,
+        "total_mass": 73.64409637451172,
+        "intensity": "Medium Anomaly",
+        "label": "Region 02"
+      }
+    ]
+  },
+  "per_defect_stats": {
+    "good": {
+      "total": 41,
+      "detected": 35,
+      "recall": 0.8537,
+      "mean_score": 2.663
+    },
+    "manipulated_front": {
+      "total": 24,
+      "detected": 24,
+      "recall": 1.0,
+      "mean_score": 3.3339
+    },
+    "scratch_head": {
+      "total": 24,
+      "detected": 24,
+      "recall": 1.0,
+      "mean_score": 3.563
+    },
+    "scratch_neck": {
+      "total": 25,
+      "detected": 24,
+      "recall": 0.96,
+      "mean_score": 3.6846
+    },
+    "thread_side": {
+      "total": 23,
+      "detected": 14,
+      "recall": 0.6087,
+      "mean_score": 2.8688
+    },
+    "thread_top": {
+      "total": 23,
+      "detected": 23,
+      "recall": 1.0,
+      "mean_score": 3.2779
+    }
+  }
+}

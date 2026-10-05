@@ -64,11 +64,11 @@ categories:
   leather:
     model_dir: models/leather/patchcore_v23
     use_spatial_prior: false
-    image_threshold: 2.20
-    pixel_threshold: 2.71
+    image_threshold: 2.90
+    pixel_threshold: 1.71
     gaussian_sigma: 1.20
     morphology_kernel: 3
-    min_region_area: 25
+    min_region_area: 50
     border_margin: 5
     merge_distance: 15.0
 
@@ -100,9 +100,10 @@ categories:
 
   screw:
     model_dir: models/screw/patchcore_v23
-    use_spatial_prior: true
-    image_threshold: 2.28
-    pixel_threshold: 2.00
+    use_spatial_prior: false
+    image_score_method: top100
+    image_threshold: 2.80
+    pixel_threshold: 2.40
     gaussian_sigma: 1.20
     morphology_kernel: 2
     min_region_area: 10
@@ -163,10 +164,12 @@ phase3_2_categories:
 
   screw:
     model_dir: models/screw/patchcore_v23
-    use_spatial_prior: true
-    prior_mode: mean
-    image_threshold: 2.65
-    pixel_threshold: 1.66
+    use_spatial_prior: false
+    prior_mode: none
+    image_score_method: top100
+    image_threshold: 2.80
+    pixel_threshold: 2.40
+    gaussian_sigma: 1.20
     morphology_kernel: 2
     border_margin: 1
     min_region_area: 10

@@ -2,7 +2,7 @@
 # VisionInspect - Git Ignore Configuration
 # ====================================================================
 
-# Python virtual environment
+# Python Virtual Environments
 visioninspect_py312/
 venv/
 .venv/
@@ -29,34 +29,41 @@ __pycache__/
 *.pem
 *.key
 
-# Logging & System Task Logs
+# Logging, Temp Files & Archives
 *.log
 *.tmp
+*.bak
+*.old
+*.orig
 task-*.log
+*.zip
+*.tar.gz
 
-# Model Weights & Memory Banks (Exceeds GitHub 100MB file limit; keep local & reproducible via scripts)
+# Scratch & Temporary Directories
+scratch/
+temp_pipeline.py
+test_env.py
+test_env.ipynb
+
+# Model Weights & Memory Banks (Exceeds GitHub 100MB limit; keep local & reproducible via scripts)
 *.pt
 *.pth
 !models/**/.gitkeep
 !models/category_prototypes.pt
 
-# OS and Editor specific
+# OS & Editor Specific
 .DS_Store
 Thumbs.db
 desktop.ini
 .idea/
 .vscode/
 
-# Runtime Prediction & Diagnostic Output Dumps
+# Runtime Dumps & Temporary Visualizations
 results/predictions/
 results/comparisons/
 results/*_diagnostic/
 results/heatmaps/
 results/eda/
 
-# Scratch & temporary scripts
-temp_pipeline.py
-test_env.py
-test_env.ipynb
-
-
+# Audit Batch Visualizations (Large image dumps kept local; reports tracked; regenerated via scripts/run_audit_batch.py)
+results/Updated_model_predictions/**/*.png

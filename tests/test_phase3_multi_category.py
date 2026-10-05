@@ -27,17 +27,17 @@ def test_category_config_loader():
     assert bottle_cfg["image_threshold"] == 1.50
     assert bottle_cfg["pixel_threshold"] == 1.40
     
-    # Leather (texture)
+    # Leather (texture - calibrated configuration)
     leather_cfg = get_category_config("leather", cfg)
     assert leather_cfg["use_spatial_prior"] is False
-    assert leather_cfg["image_threshold"] == 2.20
-    assert leather_cfg["pixel_threshold"] == 2.71
+    assert leather_cfg["image_threshold"] == 2.90
+    assert leather_cfg["pixel_threshold"] == 1.71
     
-    # Screw
+    # Screw (production locked with spatial prior disabled for thread detection)
     screw_cfg = get_category_config("screw", cfg)
-    assert screw_cfg["use_spatial_prior"] is True
-    assert screw_cfg["image_threshold"] == 2.28
-    assert screw_cfg["pixel_threshold"] == 2.00
+    assert screw_cfg["use_spatial_prior"] is False
+    assert screw_cfg["image_threshold"] == 2.80
+    assert screw_cfg["pixel_threshold"] == 2.40
     
     # Unconfigured fallback
     unknown_cfg = get_category_config("unknown_item", cfg)
@@ -52,17 +52,17 @@ def test_category_detector_initialization():
         det_leather = PatchCoreDetectorV23(category="leather", device=device)
         assert det_leather.category == "leather"
         assert det_leather.use_spatial_prior is False
-        assert det_leather.image_threshold == 2.20
-        assert det_leather.pixel_threshold == 2.71
+        assert det_leather.image_threshold == 2.90
+        assert det_leather.pixel_threshold == 1.71
         
-    # Screw detector loads with use_spatial_prior=True
+    # Screw detector loads with use_spatial_prior=False
     screw_model = Path("models/screw/patchcore_v23")
     if screw_model.exists():
         det_screw = PatchCoreDetectorV23(category="screw", device=device)
         assert det_screw.category == "screw"
-        assert det_screw.use_spatial_prior is True
-        assert det_screw.image_threshold == 2.28
-        assert det_screw.pixel_threshold == 2.00
+        assert det_screw.use_spatial_prior is False
+        assert det_screw.image_threshold == 2.80
+        assert det_screw.pixel_threshold == 2.40
 
 def test_untrained_category_raises():
     with pytest.raises(FileNotFoundError):

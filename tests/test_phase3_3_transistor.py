@@ -71,9 +71,9 @@ def test_protected_categories_remain_untouched():
     l_cfg = get_category_config("leather", cfg)
     assert l_cfg["use_spatial_prior"] is False
 
-    # Screw
+    # Screw (production locked with spatial prior disabled for thread detection)
     s_cfg = get_category_config("screw", cfg)
-    assert s_cfg["use_spatial_prior"] is True
+    assert s_cfg["use_spatial_prior"] is False
 
     # Zipper
     z_cfg = get_category_config("zipper", cfg)

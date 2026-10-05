@@ -1,4 +1,4 @@
-# File path: X:\VScode\Artificial_intelligence_n_Machine_learning\VisionInspect\src\detection\anomaly_detector.py
+"""VisionInspect - Phase 1 Convolutional Autoencoder Anomaly Detector."""
 
 import torch
 from pathlib import Path

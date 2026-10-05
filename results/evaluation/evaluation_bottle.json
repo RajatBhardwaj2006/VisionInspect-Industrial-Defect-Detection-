@@ -1,0 +1,55 @@
+{
+  "category": "bottle",
+  "metrics": {
+    "total_samples": 83,
+    "tp": 63,
+    "tn": 13,
+    "fp": 7,
+    "fn": 0,
+    "accuracy": 0.9157,
+    "precision": 0.9,
+    "recall": 1.0,
+    "specificity": 0.65,
+    "f1_score": 0.9474,
+    "roc_auc": 0.9929,
+    "pr_auc": 0.9978,
+    "mean_iou": 0.4789,
+    "defect_hit_rate": 0.9683
+  },
+  "config": {
+    "model_dir": "models\\bottle\\patchcore_v23",
+    "use_spatial_prior": true,
+    "score_method": "max_raw",
+    "image_threshold": 1.5,
+    "pixel_threshold": 1.4,
+    "border_margin": 5,
+    "min_region_area": 25
+  },
+  "target_sample": null,
+  "per_defect_stats": {
+    "broken_large": {
+      "total": 20,
+      "detected": 20,
+      "recall": 1.0,
+      "mean_score": 3.7712
+    },
+    "broken_small": {
+      "total": 22,
+      "detected": 22,
+      "recall": 1.0,
+      "mean_score": 3.7977
+    },
+    "contamination": {
+      "total": 21,
+      "detected": 21,
+      "recall": 1.0,
+      "mean_score": 3.7393
+    },
+    "good": {
+      "total": 20,
+      "detected": 13,
+      "recall": 0.65,
+      "mean_score": 1.3347
+    }
+  }
+}

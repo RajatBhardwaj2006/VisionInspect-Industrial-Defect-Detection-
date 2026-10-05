@@ -1,0 +1,61 @@
+{
+  "category": "transistor",
+  "metrics": {
+    "total_samples": 100,
+    "tp": 34,
+    "tn": 55,
+    "fp": 5,
+    "fn": 6,
+    "accuracy": 0.89,
+    "precision": 0.8718,
+    "recall": 0.85,
+    "specificity": 0.9167,
+    "f1_score": 0.8608,
+    "roc_auc": 0.9433,
+    "pr_auc": 0.9301,
+    "mean_iou": 0.1681,
+    "defect_hit_rate": 0.675
+  },
+  "config": {
+    "model_dir": "models\\transistor\\patchcore_v23",
+    "use_spatial_prior": false,
+    "score_method": "top200",
+    "image_threshold": 3.525,
+    "pixel_threshold": 2.822,
+    "border_margin": 0,
+    "min_region_area": 15
+  },
+  "target_sample": null,
+  "per_defect_stats": {
+    "bent_lead": {
+      "total": 10,
+      "detected": 10,
+      "recall": 1.0,
+      "mean_score": 4.4129
+    },
+    "cut_lead": {
+      "total": 10,
+      "detected": 9,
+      "recall": 0.9,
+      "mean_score": 3.748
+    },
+    "damaged_case": {
+      "total": 10,
+      "detected": 5,
+      "recall": 0.5,
+      "mean_score": 3.4797
+    },
+    "good": {
+      "total": 60,
+      "detected": 55,
+      "recall": 0.9167,
+      "mean_score": 3.2099
+    },
+    "misplaced": {
+      "total": 10,
+      "detected": 10,
+      "recall": 1.0,
+      "mean_score": 4.5603
+    }
+  }
+}

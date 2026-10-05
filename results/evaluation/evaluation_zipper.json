@@ -1,0 +1,79 @@
+{
+  "category": "zipper",
+  "metrics": {
+    "total_samples": 151,
+    "tp": 111,
+    "tn": 19,
+    "fp": 13,
+    "fn": 8,
+    "accuracy": 0.8609,
+    "precision": 0.8952,
+    "recall": 0.9328,
+    "specificity": 0.5938,
+    "f1_score": 0.9136,
+    "roc_auc": 0.8981,
+    "pr_auc": 0.97,
+    "mean_iou": 0.3914,
+    "defect_hit_rate": 0.8992
+  },
+  "config": {
+    "model_dir": "models\\zipper\\patchcore_v23",
+    "use_spatial_prior": true,
+    "score_method": "max_raw",
+    "image_threshold": 1.47,
+    "pixel_threshold": 0.91,
+    "border_margin": 1,
+    "min_region_area": 15
+  },
+  "target_sample": null,
+  "per_defect_stats": {
+    "broken_teeth": {
+      "total": 19,
+      "detected": 18,
+      "recall": 0.9474,
+      "mean_score": 2.2775
+    },
+    "combined": {
+      "total": 16,
+      "detected": 16,
+      "recall": 1.0,
+      "mean_score": 3.2768
+    },
+    "fabric_border": {
+      "total": 17,
+      "detected": 17,
+      "recall": 1.0,
+      "mean_score": 4.501
+    },
+    "fabric_interior": {
+      "total": 16,
+      "detected": 9,
+      "recall": 0.5625,
+      "mean_score": 1.6114
+    },
+    "good": {
+      "total": 32,
+      "detected": 19,
+      "recall": 0.5938,
+      "mean_score": 1.4002
+    },
+    "rough": {
+      "total": 17,
+      "detected": 17,
+      "recall": 1.0,
+      "mean_score": 2.6754
+    },
+    "split_teeth": {
+      "total": 18,
+      "detected": 18,
+      "recall": 1.0,
+      "mean_score": 2.2621
+    },
+    "squeezed_teeth": {
+      "total": 16,
+      "detected": 16,
+      "recall": 1.0,
+      "mean_score": 2.0836
+    }
+  }
+}

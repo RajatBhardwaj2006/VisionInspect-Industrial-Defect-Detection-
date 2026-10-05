@@ -26,11 +26,17 @@ import requests
 from PIL import Image
 
 # -----------------------------------------------------------------------------
-# PAGE CONFIGURATION & CHROME REMOVAL
+# 3D LOGO ASSET & PAGE CONFIGURATION
 # -----------------------------------------------------------------------------
+LOGO_3D_PATH = Path(__file__).resolve().parent / "assets" / "icons" / "visioninspect_3d_logo_72.png"
+LOGO_3D_B64 = ""
+if LOGO_3D_PATH.exists():
+    with open(LOGO_3D_PATH, "rb") as _f:
+        LOGO_3D_B64 = base64.b64encode(_f.read()).decode("utf-8")
+
 st.set_page_config(
     page_title="VisionInspect",
-    page_icon="○",
+    page_icon=str(LOGO_3D_PATH) if LOGO_3D_PATH.exists() else "○",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -143,6 +149,7 @@ def purge_inspection(new_category: Optional[str] = None):
     st.session_state["uploaded_image_data"] = None
     st.session_state["uploaded_images_list"] = []
     st.session_state["quick_sample_choice"] = None
+    st.session_state["sample_select_counter"] = st.session_state.get("sample_select_counter", 0) + 1
     if new_category:
         st.session_state["selected_category"] = new_category
 
@@ -261,23 +268,23 @@ def get_defect_explanation(category: str, filename: str, is_defective: bool, sco
         # 1. Plain language defect description per category
         if cat_lower == "screw":
             if "thread" in fn_lower:
-                defect_desc = "Thread damage detected: The screw threads exhibit stripped ridges, metal deformity, or thread pitch irregularity."
+                defect_desc = "Thread damage detected: There are broken, stripped, or damaged screw threads near the highlighted region."
                 where_desc = "near the screw threads"
             elif "scratch" in fn_lower or "head" in fn_lower:
-                defect_desc = "Drive head damage: Visible scratches, gouges, or surface deformation were detected across the screw drive head."
-                where_desc = "across the screw head"
+                defect_desc = "Drive head damage: Visible scratches, tool marks, or slot deformation were detected across the screw drive head."
+                where_desc = "across the screw drive head"
             elif "front" in fn_lower or "manipulated" in fn_lower:
-                defect_desc = "Front face anomaly: Abnormal tip deformation or mechanical wear was detected on the screw front face."
-                where_desc = "on the screw front face"
+                defect_desc = "Front tip anomaly: Abnormal lead-in tip deformation or thread damage was detected on the front face."
+                where_desc = "on the screw front tip"
             else:
                 defect_desc = "Structural anomaly: Surface irregularity or metal deformation departs from nominal screw geometry."
                 where_desc = "on the screw body"
         elif cat_lower == "bottle":
             if "broken" in fn_lower or "mouth" in fn_lower or "crack" in fn_lower:
-                defect_desc = "Glass fracture detected: Visible rim chipping or structural crack was detected near the bottle opening."
+                defect_desc = "Glass fracture detected: Visible rim chipping or structural crack was detected around the bottle opening."
                 where_desc = "around the bottle rim and opening"
             elif "contamination" in fn_lower:
-                defect_desc = "Particulate contamination: Foreign particles or non-conforming surface spots were detected on the bottle."
+                defect_desc = "Particulate contamination: Foreign particles or non-conforming residue spots were detected on the glass."
                 where_desc = "on the bottle surface"
             else:
                 defect_desc = "Container flaw: Material irregularity or surface defect was detected on the glass container."
@@ -287,10 +294,10 @@ def get_defect_explanation(category: str, filename: str, is_defective: bool, sco
                 defect_desc = "Surface cut detected: A distinct linear incision or puncture breaks the continuous leather grain."
                 where_desc = "on the leather grain surface"
             elif "fold" in fn_lower:
-                defect_desc = "Deep fold mark: An unnatural permanent crease or compression mark was detected."
+                defect_desc = "Deep fold mark: An unnatural permanent crease or compression mark was detected across the texture."
                 where_desc = "along the fold line"
             elif "color" in fn_lower:
-                defect_desc = "Color flaw: A noticeable hue deviation or localized surface discoloration patch was detected."
+                defect_desc = "Color flaw: A noticeable paint or discoloration patch was detected on the leather surface."
                 where_desc = "within the color patch"
             else:
                 defect_desc = "Texture anomaly: Irregular grain pattern or surface blemish was detected on the leather."
@@ -333,7 +340,7 @@ def get_defect_explanation(category: str, filename: str, is_defective: bool, sco
 
         # 2. WHERE?
         if num_defects == 1:
-            where_text = f"Region 01 — highlighted area {where_desc}."
+            where_text = f"Region 01 — highlighted area near the screw threads." if (cat_lower == "screw" and "thread" in fn_lower) else f"Region 01 — highlighted area {where_desc}."
         elif num_defects > 1:
             where_text = f"Regions 01 to {num_defects:02d} — {num_defects} highlighted areas {where_desc} were flagged."
         else:
@@ -376,10 +383,11 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
     if not is_defective:
         return {
             "status": "ACCEPT",
+            "display_title": "PASSED — SAFE TO USE",
             "badge_color": "var(--success)",
             "badge_bg": "var(--success-bg)",
             "badge_border": "#BBF7D0",
-            "reason": f"Component conforms to nominal {cat_lower} specifications and is suitable for production/assembly.",
+            "reason": f"Product is safe to use as there is no damage detected. Component conforms to nominal {cat_lower} specifications and is suitable for production/assembly.",
             "action": "Clear component through optical quality gate to downstream operations."
         }
 
@@ -389,43 +397,48 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
         if ("misplaced" in fn_lower and "000" in fn_lower) or ("rotated" in fn_lower):
             return {
                 "status": "ACCEPT",
+                "display_title": "PASSED — SAFE TO USE",
                 "badge_color": "var(--success)",
                 "badge_bg": "var(--success-bg)",
                 "badge_border": "#BBF7D0",
-                "reason": "Component orientation is rotated relative to baseline, but component body and pin structures are fully intact. Component is usable with mechanical alignment.",
+                "reason": "Component orientation is rotated relative to baseline, but component body and terminal pins are fully intact. Product is safe to use with mechanical pick-and-place alignment.",
                 "action": "Accept component; re-orient via pick-and-place feeder before PCB placement."
             }
         elif "misplaced" in fn_lower or "missing" in fn_lower:
             return {
                 "status": "REJECT",
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Critical component absence: Transistor body is missing from package casing.",
+                "reason": "Product is not safe to use because critical component parts are missing from the package casing.",
                 "action": "Reject unit immediately. Halt feeder if recurring."
             }
         elif "cut" in fn_lower or "damaged_case" in fn_lower:
             return {
                 "status": "REJECT",
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Severe casing rupture or severed pin prevents reliable electrical contact or environmental sealing.",
+                "reason": "Product is not safe to use because severe casing rupture or severed pin prevents reliable electrical contact or environmental sealing.",
                 "action": "Reject unit. Scrap or return to supplier."
             }
         elif "bent" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
+                "display_title": "NEED HUMAN INSPECTION",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
-                "reason": "Terminal lead bent: Verify whether lead deflection is within auto-insertion lead-former tolerances.",
+                "reason": "This product needs human inspection because its score is above threshold level, but all 3 legs are present and only bent or displaced. An operator or lead-forming fixture can inspect and re-straighten them.",
                 "action": "Manual inspection or mechanical lead re-straightening required."
             }
         else:
             status = "REJECT" if margin > 0.4 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
@@ -437,44 +450,49 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
         if "thread" in fn_lower:
             return {
                 "status": "REJECT",
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Thread damage detected: Stripped or deformed threading impairs safe torque transmission and joint clamp load.",
+                "reason": "Product is not safe to use because thread damage was detected. The screw threads are damaged or stripped and cannot be screwed properly, impairing safe mechanical clamping.",
                 "action": "Reject fastener. Do not use in mechanical assembly."
             }
         elif "manipulated" in fn_lower:
             return {
                 "status": "REJECT",
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Front face deformation or damaged tip: Prevents proper mechanical thread engagement.",
+                "reason": "Product is not safe to use because front tip deformation or damaged lead-in impairs mechanical thread engagement.",
                 "action": "Reject fastener."
             }
         elif "scratch" in fn_lower or "head" in fn_lower:
             if margin > 0.35:
                 return {
                     "status": "REJECT",
+                    "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                     "badge_color": "var(--danger)",
                     "badge_bg": "var(--danger-bg)",
                     "badge_border": "#FECACA",
-                    "reason": "Major drive head deformation: Drive slot compromised, preventing driver bit engagement.",
+                    "reason": "Product is not safe to use because major drive head deformation compromises tool slot engagement.",
                     "action": "Reject fastener."
                 }
             else:
                 return {
                     "status": "REQUIRES HUMAN REVIEW",
+                    "display_title": "NEED HUMAN INSPECTION",
                     "badge_color": "var(--warning)",
                     "badge_bg": "var(--warning-bg)",
                     "badge_border": "#FDE68A",
-                    "reason": "Minor cosmetic scratch on drive head: Fastener threads appear intact; review whether cosmetic standards allow use.",
+                    "reason": "This product needs human inspection: threads are intact, but a minor cosmetic scratch was detected across the drive head. Review whether cosmetic criteria allow use.",
                     "action": "Secondary QA disposition review for non-aesthetic applications."
                 }
         else:
             status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
@@ -486,25 +504,28 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
         if "cut" in fn_lower:
             return {
                 "status": "REJECT",
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Surface cut detected: Incision compromises material tensile strength and structural integrity.",
+                "reason": "Product is not safe to use because surface cut was detected: incision compromises material tensile strength and structural integrity.",
                 "action": "Reject cut section or excise defective segment."
             }
         elif "fold" in fn_lower or "color" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
+                "display_title": "NEED HUMAN INSPECTION",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
-                "reason": "Surface fold or color variation: Check whether condition is recoverable through conditioning or acceptable for secondary panels.",
+                "reason": "This product needs human inspection because its score is above threshold level, but there is only a surface fold crease or color mark that can be conditioned, repaired, or used for secondary panels.",
                 "action": "Review for secondary or non-visible grade utilization."
             }
         else:
             status = "REJECT" if margin > 0.5 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
@@ -516,25 +537,28 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
         if "broken" in fn_lower or "mouth" in fn_lower or "crack" in fn_lower:
             return {
                 "status": "REJECT",
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Critical safety defect: Rim chipping or structural crack compromises pressure seal and presents safety hazard.",
+                "reason": "Product is not safe to use: Rim chipping or structural crack compromises pressure seal and presents safety hazard.",
                 "action": "Reject and recycle glass container immediately."
             }
         elif "contamination" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
+                "display_title": "NEED HUMAN INSPECTION",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
-                "reason": "Surface contamination or particulate detected: Verify if washable or embedded in glass matrix.",
+                "reason": "This product needs human inspection: surface contamination or particulate detected. Verify if washable or embedded in glass matrix.",
                 "action": "Route container to wash station for re-inspection."
             }
         else:
             status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
@@ -546,25 +570,28 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
         if "broken" in fn_lower or "split" in fn_lower or "teeth" in fn_lower:
             return {
                 "status": "REJECT",
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Teeth chain defect: Missing or broken zipper teeth prevent slider closure and cause separation.",
+                "reason": "Product is not safe to use because teeth chain defect was detected: missing or broken zipper teeth prevent slider closure and cause separation.",
                 "action": "Reject fastener chain segment."
             }
         elif "rough" in fn_lower or "fabric" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
+                "display_title": "NEED HUMAN INSPECTION",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
-                "reason": "Fabric roughness or weave irregularity: Check slider clearance and seam stitching integrity.",
+                "reason": "This product needs human inspection: fabric roughness or weave irregularity detected along border edge. Check slider clearance and seam stitching integrity.",
                 "action": "Manual review of zipper sliding action."
             }
         else:
             status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
+                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
@@ -967,8 +994,7 @@ render_html("""
        HOMEPAGE LIVE HERO INSPECTION SCENE (SIMULATED OPTICAL SCAN)
        ========================================================================= */
     :root {
-        --scan-cycle: 6.5s;
-        --total-cycle: 13.0s;
+        --total-cycle: 11.5s;
     }
 
     .live-inspection-frame {
@@ -983,7 +1009,7 @@ render_html("""
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 420px;
+        min-height: 440px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
 
@@ -992,8 +1018,8 @@ render_html("""
         display: inline-flex;
         align-items: center;
         justify-content: flex-end;
-        min-width: 150px;
-        height: 18px;
+        min-width: 160px;
+        height: 20px;
     }
 
     .status-scanning,
@@ -1005,11 +1031,12 @@ render_html("""
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-size: 0.68rem;
+        font-size: 0.70rem;
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         white-space: nowrap;
+        will-change: opacity;
     }
 
     .status-scanning {
@@ -1018,80 +1045,98 @@ render_html("""
     }
 
     .scanning-pulse-dot {
-        width: 6px;
-        height: 6px;
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
-        background-color: #DC2626;
+        background-color: #EF4444;
         display: inline-block;
         animation: pulseDot 1.2s ease-in-out infinite alternate;
+        box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
     }
 
     .status-perfect {
-        color: #16A34A;
+        color: #10B981;
         animation: statusPerfectAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
     .perfect-badge-dot {
-        font-size: 0.75rem;
+        font-size: 0.82rem;
         line-height: 1;
         font-weight: 800;
+        color: #10B981;
     }
 
     .status-detected {
-        color: #DC2626;
+        color: #EF4444;
         animation: statusDetectedAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
     .detected-badge-dot {
         font-size: 0.75rem;
         line-height: 1;
+        color: #EF4444;
     }
 
     /* Scanner Viewport */
     .scanner-viewport {
         position: relative;
-        display: inline-block;
-        max-width: 88%;
-        margin: 26px auto;
-        overflow: hidden;
-        line-height: 0;
-        border-radius: 6px;
-        background: transparent;
-    }
-
-    .scanner-carton-img {
-        max-height: 380px;
         width: 100%;
-        object-fit: contain;
-        display: block;
-        border-radius: 4px;
+        max-width: 440px;
+        height: 380px;
+        margin: 22px auto;
+        overflow: hidden;
+        border-radius: 8px;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .carton-perfect {
-        position: relative;
-        z-index: 1;
-        animation: perfectImgAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    }
-
-    .carton-damaged {
+    /* Conveyor Slide Items */
+    .box-slide-item {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: 2;
-        animation: damagedImgAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        will-change: transform, opacity;
+        pointer-events: none;
     }
 
-    /* Laser Scanning Beam — KEEPING EXACT EXISTING SCAN ANIMATION */
+    .box-perfect-item {
+        z-index: 2;
+        animation: boxPerfectSlide var(--total-cycle) ease infinite;
+    }
+
+    .box-damaged-item {
+        z-index: 3;
+        animation: boxDamagedSlide var(--total-cycle) ease infinite;
+    }
+
+    .scanner-carton-img {
+        max-height: 360px;
+        max-width: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        user-select: none;
+        -webkit-user-drag: none;
+    }
+
+    /* Laser Scanning Beam */
     .scanner-laser-line {
         position: absolute;
         left: 0;
         width: 100%;
         height: 2px;
         pointer-events: none;
-        z-index: 6;
-        animation: laserScanMove var(--scan-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        z-index: 8;
+        will-change: top, opacity;
+        animation: laserScanMove var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
     .laser-core {
@@ -1099,39 +1144,39 @@ render_html("""
         height: 2px;
         background: linear-gradient(
             90deg,
-            rgba(220, 38, 38, 0) 0%,
-            rgba(220, 38, 38, 0.85) 12%,
+            rgba(239, 68, 68, 0) 0%,
+            rgba(239, 68, 68, 0.85) 12%,
             #EF4444 50%,
-            rgba(220, 38, 38, 0.85) 88%,
-            rgba(220, 38, 38, 0) 100%
+            rgba(239, 68, 68, 0.85) 88%,
+            rgba(239, 68, 68, 0) 100%
         );
-        box-shadow: 0 0 6px rgba(239, 68, 68, 0.65), 0 0 1px #DC2626;
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.85), 0 0 2px #DC2626;
     }
 
     .laser-ambient {
         position: absolute;
-        top: -4px;
-        left: 10%;
-        width: 80%;
-        height: 10px;
+        top: -6px;
+        left: 5%;
+        width: 90%;
+        height: 14px;
         background: radial-gradient(
             ellipse at center,
-            rgba(239, 68, 68, 0.18) 0%,
-            rgba(239, 68, 68, 0.05) 55%,
+            rgba(239, 68, 68, 0.28) 0%,
+            rgba(239, 68, 68, 0.08) 55%,
             rgba(239, 68, 68, 0) 80%
         );
         pointer-events: none;
     }
 
-    /* PERFECT Result Stamp */
+    /* PERFECT Result Stamp — HIGH VISIBILITY */
     .scanner-perfect-zone {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         pointer-events: none;
-        z-index: 5;
-        animation: perfectStampAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        z-index: 6;
+        animation: perfectStampAnim var(--total-cycle) cubic-bezier(0.16, 1, 0.3, 1) infinite;
     }
 
     .perfect-stamp {
@@ -1139,243 +1184,276 @@ render_html("""
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 10px 22px;
-        background: rgba(22, 163, 74, 0.15);
-        border: 1.5px solid #16A34A;
-        border-radius: 4px;
-        box-shadow: 0 0 16px rgba(22, 163, 74, 0.30);
-        backdrop-filter: blur(3px);
+        padding: 14px 28px;
+        background: rgba(16, 185, 129, 0.22);
+        border: 2px solid #10B981;
+        border-radius: 8px;
+        box-shadow: 0 0 24px rgba(16, 185, 129, 0.45), inset 0 0 14px rgba(16, 185, 129, 0.20);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         text-align: center;
     }
 
     .perfect-stamp-icon {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #16A34A;
+        font-size: 1.6rem;
+        font-weight: 900;
+        color: #10B981;
         line-height: 1;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
+        text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
     }
 
     .perfect-stamp-text {
-        font-size: 0.80rem;
-        font-weight: 800;
-        letter-spacing: 0.14em;
-        color: #16A34A;
+        font-size: 1.05rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        color: #10B981;
         line-height: 1.2;
+        text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
     }
 
     .perfect-stamp-sub {
-        font-size: 0.58rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        color: #22C55E;
-        margin-top: 3px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.10em;
+        color: #34D399;
+        margin-top: 4px;
         white-space: nowrap;
+        text-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
     }
 
-    /* Defect Detection Zone & Reticle (Exact damage coordinates) */
+    /* Defect Detection Zone & Reticle — ULTRA-CLEAR HIGHLIGHT */
     .scanner-defect-zone {
         position: absolute;
-        top: 29.5%;
-        left: 22.0%;
-        width: 35.5%;
-        height: 42.0%;
+        top: 28%;
+        left: 21%;
+        width: 36%;
+        height: 43%;
         pointer-events: none;
-        z-index: 5;
-        animation: defectBoxAnim var(--total-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        z-index: 6;
+        animation: defectBoxAnim var(--total-cycle) cubic-bezier(0.16, 1, 0.3, 1) infinite;
     }
 
     .defect-reticle {
         width: 100%;
         height: 100%;
-        border: 1.5px solid #DC2626;
-        border-radius: 2px;
-        background: rgba(220, 38, 38, 0.08);
+        border: 2.5px solid #EF4444;
+        border-radius: 4px;
+        background: rgba(239, 68, 68, 0.18);
         position: relative;
         box-sizing: border-box;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.55), inset 0 0 14px rgba(239, 68, 68, 0.25);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
     }
 
     .defect-corner-tag {
         position: absolute;
-        top: -18px;
-        left: -1px;
+        top: -24px;
+        left: -2px;
         background: #DC2626;
         color: #FFFFFF;
-        font-size: 0.60rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        padding: 2px 5px;
-        border-radius: 2px;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        padding: 3px 8px;
+        border-radius: 3px;
         line-height: 1;
         white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.4);
     }
 
     .defect-callout {
         position: absolute;
-        bottom: -22px;
+        bottom: -28px;
         left: 50%;
         transform: translateX(-50%);
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
         white-space: nowrap;
-    }
-
-    .defect-callout-arrow {
-        display: block;
+        background: rgba(0, 0, 0, 0.65);
+        padding: 3px 10px;
+        border-radius: 4px;
+        border: 1px solid rgba(239, 68, 68, 0.5);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
     }
 
     .defect-callout-text {
-        font-size: 0.62rem;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        color: #DC2626 !important;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #EF4444 !important;
+        text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
     }
 
-    /* Animation Keyframes */
-    @keyframes laserScanMove {
+    /* Animation Keyframes for Conveyor Motion */
+    @keyframes boxPerfectSlide {
         0% {
-            top: 2%;
+            transform: translateX(-120%);
+            opacity: 0;
+            animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        9% {
+            transform: translateX(0);
             opacity: 1;
         }
-        25% {
-            top: 18%;
+        42% {
+            transform: translateX(0);
             opacity: 1;
+            animation-timing-function: cubic-bezier(0.55, 0, 0.1, 1);
         }
-        30% {
-            top: 24%;
-            opacity: 1;
-        }
-        36% {
-            top: 25%;
-            opacity: 1;
-        }
-        55% {
-            top: 65%;
-            opacity: 1;
-        }
-        85% {
-            top: 98%;
-            opacity: 0.8;
-        }
-        90% {
-            top: 100%;
+        50% {
+            transform: translateX(120%);
             opacity: 0;
         }
-        94% {
-            top: 0%;
+        50.01%, 99.99% {
+            transform: translateX(-120%);
             opacity: 0;
         }
         100% {
-            top: 2%;
-            opacity: 1;
+            transform: translateX(-120%);
+            opacity: 0;
         }
     }
 
-    @keyframes perfectImgAnim {
-        0%, 45% {
+    @keyframes boxDamagedSlide {
+        0%, 49.99% {
+            transform: translateX(-120%);
+            opacity: 0;
+        }
+        50% {
+            transform: translateX(-120%);
+            opacity: 0;
+            animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        59% {
+            transform: translateX(0);
             opacity: 1;
         }
-        50%, 95% {
-            opacity: 0;
+        92% {
+            transform: translateX(0);
+            opacity: 1;
+            animation-timing-function: cubic-bezier(0.55, 0, 0.1, 1);
         }
         100% {
-            opacity: 1;
-        }
-    }
-
-    @keyframes damagedImgAnim {
-        0%, 45% {
-            opacity: 0;
-        }
-        50%, 95% {
-            opacity: 1;
-        }
-        100% {
+            transform: translateX(120%);
             opacity: 0;
         }
     }
 
-    @keyframes statusScanningAnim {
-        0%, 37% {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        40%, 49% {
+    @keyframes laserScanMove {
+        0%, 10% {
+            top: 4%;
             opacity: 0;
-            pointer-events: none;
         }
-        50%, 66% {
+        11% {
+            top: 4%;
             opacity: 1;
-            pointer-events: auto;
+            animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
-        69%, 95% {
-            opacity: 0;
-            pointer-events: none;
-        }
-        98%, 100% {
+        26% {
+            top: 94%;
             opacity: 1;
-            pointer-events: auto;
         }
-    }
-
-    @keyframes statusPerfectAnim {
-        0%, 37% {
+        27%, 59% {
+            top: 96%;
             opacity: 0;
-            pointer-events: none;
         }
-        40%, 47% {
+        60% {
+            top: 4%;
+            opacity: 0;
+        }
+        61% {
+            top: 4%;
             opacity: 1;
-            pointer-events: auto;
+            animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
-        49%, 100% {
+        76% {
+            top: 94%;
+            opacity: 1;
+        }
+        77%, 100% {
+            top: 96%;
             opacity: 0;
-            pointer-events: none;
         }
     }
 
     @keyframes perfectStampAnim {
-        0%, 37% {
+        0%, 26% {
             opacity: 0;
-            transform: translate(-50%, -50%) scale(0.95);
+            transform: translate(-50%, -50%) scale(0.85);
         }
-        40%, 47% {
+        28% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.03);
+        }
+        30%, 42% {
             opacity: 1;
             transform: translate(-50%, -50%) scale(1.0);
         }
-        49%, 100% {
+        48%, 100% {
             opacity: 0;
-            transform: translate(-50%, -50%) scale(0.98);
-        }
-    }
-
-    @keyframes statusDetectedAnim {
-        0%, 66% {
-            opacity: 0;
-            pointer-events: none;
-        }
-        69%, 94% {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        97%, 100% {
-            opacity: 0;
-            pointer-events: none;
+            transform: translate(-50%, -50%) scale(0.95);
         }
     }
 
     @keyframes defectBoxAnim {
-        0%, 66% {
+        0%, 75% {
             opacity: 0;
-            transform: scale(0.96);
+            transform: scale(0.88);
         }
-        69%, 94% {
+        78% {
+            opacity: 1;
+            transform: scale(1.04);
+        }
+        80%, 92% {
             opacity: 1;
             transform: scale(1.0);
         }
-        97%, 100% {
+        98%, 100% {
             opacity: 0;
-            transform: scale(0.98);
+            transform: scale(0.92);
+        }
+    }
+
+    @keyframes statusScanningAnim {
+        0%, 25% {
+            opacity: 1;
+        }
+        27%, 49% {
+            opacity: 0;
+        }
+        50%, 75% {
+            opacity: 1;
+        }
+        77%, 100% {
+            opacity: 0;
+        }
+    }
+
+    @keyframes statusPerfectAnim {
+        0%, 26% {
+            opacity: 0;
+        }
+        28%, 47% {
+            opacity: 1;
+        }
+        49%, 100% {
+            opacity: 0;
+        }
+    }
+
+    @keyframes statusDetectedAnim {
+        0%, 76% {
+            opacity: 0;
+        }
+        78%, 97% {
+            opacity: 1;
+        }
+        99%, 100% {
+            opacity: 0;
         }
     }
 
@@ -1536,23 +1614,194 @@ render_html("""
         background: linear-gradient(to right, #000080 0%, #00FFFF 35%, #FFFF00 70%, #FF0000 100%);
     }
 
-    /* Clickable VisionInspect Logo (Strictly Scoped) */
+    /* Metric Card Boxes & Hover Info Tooltips */
+    .metric-card-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 18px;
+        margin-bottom: 8px;
+        position: relative;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .metric-card-box:hover {
+        border-color: var(--border-strong);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+    .metric-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+    .metric-card-title {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -0.01em;
+    }
+    .metric-card-num {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-left: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .metric-card-desc {
+        font-size: 0.77rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+    .info-tooltip-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+    }
+    .info-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 19px;
+        height: 19px;
+        border-radius: 50%;
+        background: var(--surface-subtle);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1;
+        transition: all 0.15s ease;
+    }
+    .info-tooltip-wrapper:hover .info-icon {
+        background: var(--text-primary);
+        color: var(--surface);
+        border-color: var(--text-primary);
+        transform: scale(1.08);
+    }
+    .info-tooltip-box {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        right: 0;
+        top: 26px;
+        width: 300px;
+        background: #18181B;
+        color: #F4F4F5;
+        padding: 12px 14px;
+        border-radius: 8px;
+        border: 1px solid #3F3F46;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.40);
+        font-size: 0.74rem;
+        line-height: 1.45;
+        z-index: 99999;
+        pointer-events: none;
+        transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+        transform: translateY(-4px);
+    }
+    .info-tooltip-wrapper:hover .info-tooltip-box {
+        visibility: visible;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Vertical Heatmap Scale Bar (Side-by-side after Image 03) */
+    .vertical-scale-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        height: 100%;
+        min-height: 230px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 6px;
+        box-sizing: border-box;
+    }
+    .vertical-scale-bar-track {
+        position: relative;
+        width: 14px;
+        flex: 1;
+        min-height: 140px;
+        margin: 8px 0;
+        border-radius: 7px;
+        background: linear-gradient(to bottom, #FF0000 0%, #FF8800 25%, #FFFF00 50%, #00FFFF 75%, #000080 100%);
+        box-shadow: inset 0 0 3px rgba(0,0,0,0.3);
+    }
+    .vertical-scale-tag {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: 0.03em;
+        line-height: 1.2;
+    }
+    .vertical-scale-val {
+        font-size: 0.65rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        color: var(--text-muted);
+        text-align: center;
+        margin-top: 2px;
+    }
+    .vertical-scale-threshold-line {
+        position: absolute;
+        left: -4px;
+        right: -4px;
+        height: 2px;
+        background: #FFFFFF;
+        box-shadow: 0 0 4px #000000;
+        border-radius: 1px;
+    }
+
+    /* Technician Details Table */
+    .tech-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.80rem;
+        margin: 10px 0;
+    }
+    .tech-table th {
+        background: var(--surface-subtle);
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.68rem;
+        letter-spacing: 0.05em;
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+    .tech-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-primary);
+    }
+    .tech-table tr:last-child td {
+        border-bottom: none;
+    }
+    .tech-table tr:hover td {
+        background: var(--surface-hover);
+    }
+
+    /* Clickable VisionInspect Logo with 3D Icon */
     div.st-key-nav_logo_btn button {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        padding: 6px 0 !important;
-        font-size: 1.08rem !important;
+        padding: 4px 0 !important;
+        font-size: 1.15rem !important;
         font-weight: 700 !important;
         letter-spacing: -0.02em !important;
         color: var(--text-primary) !important;
         cursor: pointer !important;
         text-align: left !important;
+        display: inline-flex !important;
+        align-items: center !important;
     }
     div.st-key-nav_logo_btn button:hover {
         background: transparent !important;
         color: var(--text-primary) !important;
-        opacity: 0.75 !important;
+        opacity: 0.85 !important;
     }
     div.st-key-nav_logo_btn button * {
         color: var(--text-primary) !important;
@@ -1605,10 +1854,44 @@ render_html("""
 # -----------------------------------------------------------------------------
 # MINIMALIST NAVBAR (4-COLUMN: BRAND | LINKS | ACTION | THEME TOGGLE)
 # -----------------------------------------------------------------------------
+if LOGO_3D_B64:
+    render_html(f"""
+    <style>
+        div.st-key-nav_logo_btn button div[data-testid="stMarkdownContainer"] p {{
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            margin: 0 !important;
+            font-size: 1.15rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em !important;
+            color: var(--text-primary) !important;
+        }}
+        div.st-key-nav_logo_btn button div[data-testid="stMarkdownContainer"] p::before {{
+            content: "" !important;
+            display: inline-block !important;
+            width: 28px !important;
+            height: 28px !important;
+            flex-shrink: 0 !important;
+            background-image: url('data:image/png;base64,{LOGO_3D_B64}') !important;
+            background-size: contain !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(0, 220, 255, 0.35)) !important;
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease !important;
+        }}
+        div.st-key-nav_logo_btn button:hover div[data-testid="stMarkdownContainer"] p::before {{
+            transform: scale(1.18) rotate(5deg) !important;
+            filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 16px rgba(0, 220, 255, 0.6)) !important;
+        }}
+    </style>
+    """)
+
 nav_col1, nav_col2, nav_col3, nav_col4 = st.columns([1.6, 2.8, 1.4, 0.9], gap="small")
 
 with nav_col1:
-    if st.button("●  VisionInspect", key="nav_logo_btn"):
+    btn_label = "VisionInspect" if LOGO_3D_B64 else "●  VisionInspect"
+    if st.button(btn_label, key="nav_logo_btn"):
         st.session_state["nav_page"] = "Home"
         purge_inspection()
         st.rerun()
@@ -1753,32 +2036,38 @@ if st.session_state["nav_page"] == "Home":
             </div>
 
             <div class="scanner-viewport">
-                <img src="data:image/png;base64,{b64_perfect}" class="scanner-carton-img carton-perfect" alt="Optical Inspection - Reference Standard" />
-                <img src="data:image/png;base64,{b64_damaged}" class="scanner-carton-img carton-damaged" alt="Optical Inspection - Sample Component" />
+                <!-- 01 Perfect Box (Slides in from left, scanned, shows prominent PERFECT badge, slides out to right) -->
+                <div class="box-slide-item box-perfect-item">
+                    <img src="data:image/png;base64,{b64_perfect}" class="scanner-carton-img" alt="Optical Inspection - Reference Standard" />
+                    <div class="scanner-perfect-zone">
+                        <div class="perfect-stamp">
+                            <div class="perfect-stamp-icon">✓</div>
+                            <div class="perfect-stamp-text">PERFECT</div>
+                            <div class="perfect-stamp-sub">0 DEFECTS DETECTED</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 02 Defective Box (Slides in from left, scanned, highlights DAMAGE region, slides out to right) -->
+                <div class="box-slide-item box-damaged-item">
+                    <img src="data:image/png;base64,{b64_damaged}" class="scanner-carton-img" alt="Optical Inspection - Sample Component" />
+                    <div class="scanner-defect-zone">
+                        <div class="defect-reticle">
+                            <div class="defect-corner-tag">DAMAGE</div>
+                        </div>
+                        <div class="defect-callout">
+                            <svg class="defect-callout-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M6 11V2M6 2L2 6M6 2L10 6" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="defect-callout-text">DEFECT DETECTED</span>
+                        </div>
+                    </div>
+                </div>
                 
+                <!-- Optical Laser Scanner Beam -->
                 <div class="scanner-laser-line">
                     <div class="laser-core"></div>
                     <div class="laser-ambient"></div>
-                </div>
-
-                <div class="scanner-perfect-zone">
-                    <div class="perfect-stamp">
-                        <div class="perfect-stamp-icon">✓</div>
-                        <div class="perfect-stamp-text">PERFECT</div>
-                        <div class="perfect-stamp-sub">0 DEFECTS DETECTED</div>
-                    </div>
-                </div>
-
-                <div class="scanner-defect-zone">
-                    <div class="defect-reticle">
-                        <div class="defect-corner-tag">DAMAGE</div>
-                    </div>
-                    <div class="defect-callout">
-                        <svg class="defect-callout-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <path d="M6 11V2M6 2L2 6M6 2L10 6" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span class="defect-callout-text">DEFECT DETECTED</span>
-                    </div>
                 </div>
             </div>
 
@@ -1954,8 +2243,8 @@ elif st.session_state["nav_page"] == "Inspect":
 
         st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-        # 4. THREE PANELS (01 ORIGINAL IMAGE | 02 ANOMALY MAP | 03 DEFECT LOCALIZATION)
-        v_col1, v_col2, v_col3 = st.columns(3, gap="medium")
+        # 4. THREE PANELS + VERTICAL HEATMAP SCALE (01 ORIGINAL | 02 ANOMALY MAP | 03 LOCALIZATION | 04 HEATMAP SCALE)
+        v_col1, v_col2, v_col3, v_col4 = st.columns([1.0, 1.0, 1.0, 0.28], gap="medium")
 
         # 01 ORIGINAL IMAGE
         with v_col1:
@@ -1970,13 +2259,7 @@ elif st.session_state["nav_page"] == "Inspect":
             hm_b64 = res.get("heatmap_base64")
             if hm_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(hm_b64))), use_container_width=True)
-                render_html("""
-                <div class="minimal-legend">
-                    <span>Low (Nominal)</span>
-                    <div class="legend-gradient"></div>
-                    <span>High (Anomaly)</span>
-                </div>
-                """)
+                render_html("<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>Density Heatmap Analysis</div>")
             else:
                 st.info("Anomaly map not available.")
 
@@ -1992,133 +2275,335 @@ elif st.session_state["nav_page"] == "Inspect":
                     st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
                 render_html("<div style='font-size: 0.68rem; color: var(--success); margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero anomaly clusters detected</div>")
 
-        # 5. METRIC STRIP
+        # 04 HEATMAP SCALE (ON THE RIGHT SIDE AFTER 3 IMAGES)
+        with v_col4:
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px; text-align: center;'>HEATMAP SCALE</div>")
+            render_html(f"""
+            <div class="vertical-scale-container">
+                <div>
+                    <div class="vertical-scale-tag" style="color: var(--danger);">High</div>
+                    <div class="vertical-scale-val" title="Peak pixel anomaly">{peak_anomaly:.2f}</div>
+                </div>
+                <div class="vertical-scale-bar-track" title="Colormap gradient from normal blue to defect red">
+                    <div class="vertical-scale-threshold-line" style="top: 45%;" title="Calibrated Threshold Cutoff"></div>
+                </div>
+                <div>
+                    <div class="vertical-scale-val" title="Zero baseline">0.00</div>
+                    <div class="vertical-scale-tag" style="color: #60A5FA;">Low</div>
+                </div>
+            </div>
+            <div style="font-size: 0.62rem; color: var(--text-muted); text-align: center; margin-top: 4px; line-height: 1.2;">
+                Red = Defect<br>Blue = Normal
+            </div>
+            """)
+
+        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+        # 5. SCORE SECTION: EACH IN ITS OWN BOX IN ONE COLUMN WITH HOVER INFO POPUP
+        render_html("<div style='font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>INSPECTION SCORES & METRICS</div>")
+        
         margin_sign = f"+{margin:.4f}" if margin > 0 else f"{margin:.4f}"
         margin_color = "var(--danger)" if margin > 0 else "var(--success)"
 
         render_html(f"""
-        <div class="metric-strip">
-            <div class="metric-item">
-                <span class="metric-label">Anomaly Score</span>
-                <span class="metric-value">{score:.4f}</span>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
+            <!-- Box 1: Anomaly Score -->
+            <div class="metric-card-box">
+                <div class="metric-card-header">
+                    <span class="metric-card-title">Anomaly Score : <span class="metric-card-num">{score:.4f}</span></span>
+                    <div class="info-tooltip-wrapper">
+                        <span class="info-icon">i</span>
+                        <div class="info-tooltip-box">
+                            <strong style="color: #67E8F9;">Anomaly Score Explained:</strong><br>
+                            • Compares tiny image patches against thousands of verified defect-free reference features.<br>
+                            • A higher numerical score signifies stronger visual departure from nominal factory baseline.<br>
+                            • If this value exceeds the threshold, the component is flagged as defective.<br>
+                            • Evaluated using PatchCore nearest-neighbor density estimation.
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card-desc">Measures the overall visual deviation of this component from nominal factory baseline samples.</div>
             </div>
-            <div class="metric-item">
-                <span class="metric-label">Threshold</span>
-                <span class="metric-value">{th:.4f}</span>
+
+            <!-- Box 2: Threshold -->
+            <div class="metric-card-box">
+                <div class="metric-card-header">
+                    <span class="metric-card-title">Threshold : <span class="metric-card-num">{th:.4f}</span></span>
+                    <div class="info-tooltip-wrapper">
+                        <span class="info-icon">i</span>
+                        <div class="info-tooltip-box">
+                            <strong style="color: #67E8F9;">Inspection Threshold Explained:</strong><br>
+                            • Statistically calibrated cutoff separating normal from defective components.<br>
+                            • Components with scores below this limit are accepted as defect-free.<br>
+                            • Scores above this limit trigger rejection or human engineering review.<br>
+                            • Calibrated with a 99.5% confidence bound to prevent false production stops.
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card-desc">The maximum allowable anomaly score separating acceptable components from non-conforming parts.</div>
             </div>
-            <div class="metric-item">
-                <span class="metric-label">Decision Margin</span>
-                <span class="metric-value" style="color: {margin_color};">{margin_sign}</span>
+
+            <!-- Box 3: Decision Margin -->
+            <div class="metric-card-box">
+                <div class="metric-card-header">
+                    <span class="metric-card-title">Decision Margin : <span class="metric-card-num" style="color: {margin_color};">{margin_sign}</span></span>
+                    <div class="info-tooltip-wrapper">
+                        <span class="info-icon">i</span>
+                        <div class="info-tooltip-box">
+                            <strong style="color: #67E8F9;">Decision Margin Explained:</strong><br>
+                            • Calculated mathematically as: Anomaly Score minus Threshold.<br>
+                            • Positive (+) margin indicates the defect severity exceeds factory tolerance limits.<br>
+                            • Negative (−) margin means the component conforms comfortably within quality clearance.<br>
+                            • Larger positive numbers indicate more severe structural or surface damage.
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card-desc">The distance between the component's anomaly score and the calibrated acceptance cutoff.</div>
             </div>
-            <div class="metric-item">
-                <span class="metric-label">Defect Regions</span>
-                <span class="metric-value">{n_defects}</span>
+
+            <!-- Box 4: Defect Regions -->
+            <div class="metric-card-box">
+                <div class="metric-card-header">
+                    <span class="metric-card-title">Defect Regions : <span class="metric-card-num">{n_defects}</span></span>
+                    <div class="info-tooltip-wrapper">
+                        <span class="info-icon">i</span>
+                        <div class="info-tooltip-box">
+                            <strong style="color: #67E8F9;">Defect Regions Explained:</strong><br>
+                            • Counts contiguous clusters of pixels whose anomaly scores exceed the pixel threshold.<br>
+                            • Filters out single-pixel sensor noise and optical artifacts.<br>
+                            • Each cluster is assigned a bounding box, surface area, and severity rating.<br>
+                            • Defect-free components will always exhibit exactly 0 detected defect regions.
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card-desc">The total number of localized anomaly clusters flagged across the surface of the component.</div>
             </div>
-            <div class="metric-item">
-                <span class="metric-label">Inference Latency</span>
-                <span class="metric-value">{int(latency_ms)} ms</span>
+
+            <!-- Box 5: Inference Latency -->
+            <div class="metric-card-box">
+                <div class="metric-card-header">
+                    <span class="metric-card-title">Inference Latency : <span class="metric-card-num">{int(latency_ms)} ms</span></span>
+                    <div class="info-tooltip-wrapper">
+                        <span class="info-icon">i</span>
+                        <div class="info-tooltip-box">
+                            <strong style="color: #67E8F9;">Inference Latency Explained:</strong><br>
+                            • Real-world time taken to extract features, evaluate embeddings, and build heatmaps.<br>
+                            • Optimized for high-throughput automated inspection gates on the factory floor.<br>
+                            • Enables line speeds of tens to hundreds of parts per minute without bottlenecks.<br>
+                            • Includes end-to-end tensor transformations and dual-gated thresholding.
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card-desc">Total execution duration taken by the vision model to process and evaluate this image.</div>
             </div>
         </div>
         """)
 
-        # 6, 7, 8: EXPLANATION SECTIONS (WHY DEFECTIVE? WHERE? WHY FLAGGED?)
+        # 6, 7, 8: WHY IS THIS PRODUCT DEFECTIVE? (4.1 WHAT FOUND | 4.2 WHERE | 4.3 USABILITY)
         why_heading, defect_desc, where_text, why_flagged_text = get_defect_explanation(
             active_cat, fname, is_defective, score, th, n_defects, margin
         )
-
-        why_flagged_label = "WHY IT WAS FLAGGED" if is_defective else "WHY IT PASSED"
-
-        render_html(f"""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;">{why_heading}</div>
-            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.55;">
-                <div>
-                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 3px;">FINDINGS</div>
-                    <div>{defect_desc}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 3px;">WHERE</div>
-                    <div>{where_text}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 3px;">{why_flagged_label}</div>
-                    <div>{why_flagged_text}</div>
-                </div>
-            </div>
-        </div>
-        """)
-
-        # 9. USABILITY ASSESSMENT (EXACTLY THREE STATES: ACCEPT, REQUIRES HUMAN REVIEW, REJECT)
         usab = get_usability_assessment(active_cat, fname, is_defective, score, th, n_defects, margin)
-        usability_badge = f'<span style="display:inline-block; padding: 4px 12px; border-radius: 4px; background: {usab["badge_bg"]}; color: {usab["badge_color"]}; font-weight: 700; font-size: 0.74rem; border: 1px solid {usab["badge_border"]}; letter-spacing: 0.04em;">{usab["status"]}</span>'
+        usability_title = usab.get("display_title", usab["status"])
+        usability_badge = f'<span style="display:inline-block; padding: 4px 12px; border-radius: 4px; background: {usab["badge_bg"]}; color: {usab["badge_color"]}; font-weight: 700; font-size: 0.74rem; border: 1px solid {usab["badge_border"]}; letter-spacing: 0.04em;">{usability_title}</span>'
+
+        # Coordinates details string if regions exist
+        coords_detail_html = ""
+        if is_defective and regs:
+            coords_items = []
+            for r_idx, reg in enumerate(regs[:4]):
+                lbl = reg.get("label", f"Region {r_idx+1:02d}")
+                bbox = reg.get("bbox", [0, 0, 0, 0])
+                coords_items.append(f"<strong>{lbl}:</strong> [X: {bbox[0]}–{bbox[2]}, Y: {bbox[1]}–{bbox[3]}] ({reg.get('area', 0)} px)")
+            coords_detail_html = f"<div style='font-size: 0.76rem; color: var(--text-secondary); margin-top: 6px; font-family: ui-monospace, monospace;'>" + " • ".join(coords_items) + "</div>"
 
         render_html(f"""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <span style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)</span>
-                {usability_badge}
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                {why_heading}
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 14px;">
-                {usab["reason"]}
-            </div>
-            <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-                    <span style="color: var(--text-secondary);">Inspection status:</span>
-                    <span style="color: {'var(--danger)' if is_defective else 'var(--success)'}; font-weight: 700;">{status}</span>
+            
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                <!-- 4.1 WHAT MODEL FOUND -->
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+                        4.1 WHAT THE MODEL FOUND (FINDINGS)
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.5; font-weight: 500;">
+                        {defect_desc}
+                    </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-                    <span style="color: var(--text-secondary);">Usability status:</span>
-                    <span style="color: {usab['badge_color']}; font-weight: 700;">{usab['status']}</span>
+
+                <!-- 4.2 WHERE (REGION LOCATION) -->
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+                        4.2 DEFECT REGION LOCATION (WHERE)
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.5;">
+                        {where_text}
+                    </div>
+                    {coords_detail_html}
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: var(--text-secondary);">Recommended action:</span>
-                    <span style="color: var(--text-primary); font-weight: 500;">{usab['action']}</span>
+
+                <!-- 4.3 IS THIS PRODUCT STILL USABLE? -->
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                        <span style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase;">
+                            4.3 IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)
+                        </span>
+                        {usability_badge}
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 12px; font-weight: 500;">
+                        {usab["reason"]}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 0.80rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Quality Status:</span>
+                            <span style="color: {'var(--danger)' if is_defective else 'var(--success)'}; font-weight: 700;">{status}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Usability Disposition:</span>
+                            <span style="color: {usab['badge_color']}; font-weight: 700;">{usability_title}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Recommended Action:</span>
+                            <span style="color: var(--text-primary); font-weight: 600;">{usab['action']}</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.70rem; color: var(--text-muted); margin-top: 10px; line-height: 1.4;">
+                        Based on visual inspection. The system detects visual anomalies; it does not independently certify whether a physical component is safe to use.
+                    </div>
                 </div>
-            </div>
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
-                Based on visual inspection. The system detects visual anomalies; it does not independently certify whether a physical component is safe to use.
             </div>
         </div>
         """)
 
-        # 10. COLLAPSIBLE TECHNICAL DETAILS (EXACT REQUIRED FIELDS)
-        with st.expander("Technical Details (Architecture & Metrics)", expanded=False):
-            st.markdown(f"""
-            - **Model:** PatchCore v2.3 (Unsupervised Density-based Anomaly Localization)
-            - **Model / Category:** `{active_cat.title()}` (`models/{active_cat}/patchcore_v23/`)
-            - **Backbone:** ResNet-18 (Pretrained ImageNet weights)
-            - **Feature Layers:** Layers 1, 2, and 3 (Spatiotemporal pyramid pooling)
-            - **Embedding (448D):** 448-dimensional patch representations on a 64×64 spatial grid
-            - **Memory Bank:** {mem_bank} (Greedy minimax 10% coreset subsampling)
-            - **Anomaly Score:** `{score:.4f}`
-            - **Inspection Threshold ($T_{{image}}$):** `{th:.4f}`
-            - **Peak Anomaly ($T_{{pixel}}$):** `{peak_anomaly:.4f}` (Calibrated pixel threshold: `{p_th:.4f}`)
-            - **Decision Margin:** `{margin_sign}`
-            - **Defect Regions:** `{n_defects}` localized region(s)
-            - **Decision Rule:** Dual-Gated $[Score > T_{{image}}] \\land [Defect Area \\ge min\\_area]$
-            - **Inference Time:** `{int(latency_ms)} ms` (`{latency_ms / 1000.0:.3f} s`)
-            - **Request ID:** `{res.get('request_id', 'N/A')}`
-            """)
-
-        # 11. LOCALIZED REGIONS BREAKDOWN (IF DEFECTIVE)
+        # 5. REJECTION AREA & TECHNICAL DETAILS (ENGINEERING & QA REPORT)
+        # Build rejection regions table HTML
         if is_defective and regs:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin: 16px 0 8px 0;'>LOCALIZED ANOMALY REGIONS</div>")
-            reg_cols = st.columns(min(4, len(regs)))
-            for r_idx, reg in enumerate(regs[:4]):
-                with reg_cols[r_idx]:
-                    lbl = reg.get("label", f"Region {r_idx+1:02d}")
-                    intensity = reg.get("intensity", "Anomaly Region")
-                    area_px = reg.get("area", 0)
-                    r_score = reg.get("score", 0.0)
-                    bbox = reg.get("bbox", [0, 0, 0, 0])
-                    render_html(f"""
-                    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-size: 0.78rem;">
-                        <div style="font-weight: 700; color: var(--danger);">{lbl}</div>
-                        <div style="color: var(--text-secondary); margin-top: 2px;">{intensity}</div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Area: {area_px} px • Score: {r_score:.4f}</div>
-                        <div style="font-size: 0.70rem; color: var(--text-muted); margin-top: 2px;">Box: [{bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]}]</div>
-                    </div>
-                    """)
+            reg_rows_html = ""
+            for r_idx, reg in enumerate(regs):
+                lbl = reg.get("label", f"Region {r_idx+1:02d}")
+                intensity = reg.get("intensity", "Anomaly Region")
+                area_px = reg.get("area", 0)
+                r_score = reg.get("score", 0.0)
+                bbox = reg.get("bbox", [0, 0, 0, 0])
+                w_px = max(0, bbox[2] - bbox[0])
+                h_px = max(0, bbox[3] - bbox[1])
+                sev_color = "var(--danger)" if r_score > p_th * 1.2 else "var(--warning)"
+                reg_rows_html += f"""
+                <tr>
+                    <td style="font-weight: 700; color: var(--danger);">{lbl}</td>
+                    <td style="font-family: monospace;">[{bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]}]</td>
+                    <td>{w_px} × {h_px} px</td>
+                    <td>{area_px:,} px</td>
+                    <td style="font-family: monospace; font-weight: 600;">{r_score:.4f}</td>
+                    <td><span style="color: {sev_color}; font-weight: 600;">{intensity}</span></td>
+                </tr>
+                """
+        else:
+            reg_rows_html = """
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--success); font-weight: 600; padding: 14px;">
+                    ✔ Zero Rejection Regions — Component surface fully conforms within nominal tolerances.
+                </td>
+            </tr>
+            """
+
+        with st.expander("Rejection Area & Technical Details (Engineering & QA Report)", expanded=False):
+            render_html(f"""
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+                    1. REJECTION AREA ANALYSIS (LOCALIZED DEFECT REGIONS)
+                </div>
+                <table class="tech-table">
+                    <thead>
+                        <tr>
+                            <th>Region</th>
+                            <th>Bounding Box [X1, Y1, X2, Y2]</th>
+                            <th>Dimensions</th>
+                            <th>Area</th>
+                            <th>Peak Score</th>
+                            <th>Severity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {reg_rows_html}
+                    </tbody>
+                </table>
+            </div>
+
+            <div>
+                <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+                    2. MODEL ARCHITECTURE & CALIBRATION PARAMETERS
+                </div>
+                <table class="tech-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Parameter / Metric</th>
+                            <th style="width: 65%;">Specification & Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Model Architecture</td>
+                            <td><strong>PatchCore v2.3</strong> (Unsupervised Density-based Anomaly Localization)</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Model Checkpoint</td>
+                            <td style="font-family: monospace;">models/{active_cat}/patchcore_v23/</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Backbone Feature Extractor</td>
+                            <td>ResNet-18 (Pretrained ImageNet weights, Layers 1, 2, 3 pyramid pooling)</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Feature Representation</td>
+                            <td>448-dimensional patch representations on a 64×64 spatial grid (4,096 patches)</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Memory Bank Size</td>
+                            <td>{mem_bank} (Greedy minimax 10% coreset subsampling)</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Image Anomaly Score ($S_{{image}}$)</td>
+                            <td style="font-family: monospace; font-weight: 700;">{score:.4f}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Inspection Threshold ($T_{{image}}$)</td>
+                            <td style="font-family: monospace;">{th:.4f}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Peak Pixel Anomaly ($S_{{pixel}}$)</td>
+                            <td style="font-family: monospace;">{peak_anomaly:.4f} (Calibrated pixel threshold $T_{{pixel}}$: {p_th:.4f})</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Decision Margin (Δ)</td>
+                            <td style="font-family: monospace; font-weight: 700; color: {margin_color};">{margin_sign}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Decision Rule</td>
+                            <td>Dual-Gated: [Anomaly Score &gt; T<sub>image</sub>] AND [Defect Area &ge; min_area]</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Inference Latency</td>
+                            <td><strong>{int(latency_ms)} ms</strong> ({latency_ms / 1000.0:.3f} s)</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-secondary);">Request Trace ID</td>
+                            <td style="font-family: monospace; font-size: 0.72rem;">{res.get('request_id', 'N/A')}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; margin-top: 14px; font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45;">
+                <strong style="color: var(--text-primary);">Technician Action & Diagnostic Guide:</strong><br>
+                • If recurring false positives are observed on nominal components, verify camera lens cleanliness and fixture alignment before increasing $T_{{image}}$.<br>
+                • If subtle real-world defects are under-segmented, decrease connected-component filtering or inspect lighting diffusion.<br>
+                • For persistent hardware defects, verify that electrical pin pitches and mechanical thread gauges conform to production drawing tolerances.
+            </div>
+            """)
 
         # 12. INSPECT ANOTHER BUTTON
         st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
@@ -2251,6 +2736,9 @@ elif st.session_state["nav_page"] == "Inspect":
                 existing_names = {img["filename"] for img in st.session_state["uploaded_images_list"]}
                 added_any = False
                 for f in new_files:
+                    if len(st.session_state["uploaded_images_list"]) >= 5:
+                        st.warning("Inspection queue limit reached (maximum 5 images per batch).")
+                        break
                     if f.name not in existing_names:
                         raw_bytes = f.getvalue()
                         try:
@@ -2276,30 +2764,39 @@ elif st.session_state["nav_page"] == "Inspect":
             </div>
             """)
 
+            if "sample_select_counter" not in st.session_state:
+                st.session_state["sample_select_counter"] = 0
+
             sample_options = [s[0] for s in cat_data["samples"]]
+            select_key = f"center_sample_selectbox_{st.session_state['sample_select_counter']}"
             selected_sample_label = st.selectbox(
                 f"Verified {cat_data['name']} Samples:",
                 options=["-- Select sample to queue --"] + sample_options,
-                key="center_sample_selectbox"
+                key=select_key
             )
             if selected_sample_label != "-- Select sample to queue --":
-                target_path = None
-                for s_name, s_path in cat_data["samples"]:
-                    if s_name == selected_sample_label:
-                        target_path = s_path
-                        break
-                if target_path and Path(target_path).exists():
-                    with open(target_path, "rb") as f:
-                        s_bytes = f.read()
-                    pil_im = Image.open(io.BytesIO(s_bytes))
-                    s_fname = Path(target_path).name
-                    st.session_state["uploaded_images_list"].append({
-                        "id": f"sample_{time.time_ns()}_{s_fname}",
-                        "filename": s_fname,
-                        "bytes": s_bytes,
-                        "size": pil_im.size
-                    })
-                    st.rerun()
+                if len(st.session_state["uploaded_images_list"]) >= 5:
+                    st.warning("Inspection queue limit reached (maximum 5 images per batch). Please inspect or remove images.")
+                else:
+                    target_path = None
+                    for s_name, s_path in cat_data["samples"]:
+                        if s_name == selected_sample_label:
+                            target_path = s_path
+                            break
+                    if target_path and Path(target_path).exists():
+                        with open(target_path, "rb") as f:
+                            s_bytes = f.read()
+                        pil_im = Image.open(io.BytesIO(s_bytes))
+                        s_fname = Path(target_path).name
+                        st.session_state["uploaded_images_list"].append({
+                            "id": f"sample_{time.time_ns()}_{s_fname}",
+                            "filename": s_fname,
+                            "bytes": s_bytes,
+                            "size": pil_im.size
+                        })
+                # Increment counter to reset selectbox back to '-- Select sample to queue --'
+                st.session_state["sample_select_counter"] += 1
+                st.rerun()
 
         # RIGHT COLUMN: Component Catalog with Visual Thumbnails
         with right_col:

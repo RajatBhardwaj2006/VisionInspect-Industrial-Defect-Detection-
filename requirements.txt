@@ -1,14 +1,38 @@
-numpy
-pandas
-opencv-python
-Pillow
-matplotlib
-scikit-learn
-PyYAML
-tqdm
-seaborn
-jupyter
-ipykernel
-streamlit
-plotly
-pytest
+# ====================================================================
+# VisionInspect - Core Project Dependencies
+# Validated Environment: Python 3.12.10 (64-bit)
+# ====================================================================
+
+# Deep Learning & Scientific Computing
+# Note: For CPU-only PyTorch installation, use:
+# pip install torch==2.2.2+cpu torchvision==0.17.2+cpu torchaudio==2.2.2+cpu --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0,<=2.3.0
+torchvision>=0.17.0,<=0.18.0
+numpy==1.26.4
+scipy==1.12.0
+scikit-learn==1.4.2
+
+# Image Processing & Computer Vision
+opencv-python>=4.8.0,<=5.0.0.93
+Pillow>=10.2.0,<=12.3.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# Configuration & Utilities
+PyYAML==6.0.3
+tqdm>=4.66.0
+pandas>=2.2.0
+
+# Backend REST API
+fastapi>=0.110.0,<=0.141.1
+uvicorn>=0.28.0,<=0.52.4
+python-multipart>=0.0.9
+requests>=2.31.0
+httpx>=0.27.0
+
+# Frontend Web Application
+streamlit>=1.32.0,<=1.63.0
+plotly>=5.19.0
+
+# Automated Testing
+pytest>=8.0.0
