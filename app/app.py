@@ -227,9 +227,10 @@ def render_html(content: str):
 # Modal Popup Dialog for Category / Component Mismatch
 @st.dialog("⚠️ Model & Component Mismatch Detected")
 def show_category_mismatch_dialog(mismatch_info: Dict[str, Any]):
-    sel_name = mismatch_info.get("selected_model", "").title()
-    det_name = mismatch_info.get("detected_image", "").title()
-    fname = mismatch_info.get("filename", "uploaded_sample.png")
+    import html as _html
+    sel_name = _html.escape(mismatch_info.get("selected_model", "").title())
+    det_name = _html.escape(mismatch_info.get("detected_image", "").title())
+    fname = _html.escape(mismatch_info.get("filename", "uploaded_sample.png"))
 
     render_html(f"""
     <div style="background: rgba(239, 68, 68, 0.08); border: 1.5px solid #EF4444; border-radius: 8px; padding: 16px 18px; margin-bottom: 14px;">
