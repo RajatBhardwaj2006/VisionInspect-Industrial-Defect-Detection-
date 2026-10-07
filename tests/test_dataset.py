@@ -3,6 +3,10 @@ from src.data.dataset_loader import MVTecTrainDataset, MVTecTestDataset
 
 def test_dataset_load():
     """Test train and test dataset loader classes."""
+    from pathlib import Path
+    import pytest
+    if not Path("dataset/mvtec_anomaly_detection").exists():
+        pytest.skip("MVTec raw dataset not downloaded (see Docs/DATASET_SETUP.md)")
     train_dataset = MVTecTrainDataset(
         dataset_root="dataset/mvtec_anomaly_detection",
         category="bottle"
@@ -22,6 +26,10 @@ def test_dataset_load():
 
 def test_mask_load():
     """Test that ground truth masks are loaded properly with matching dimensions."""
+    from pathlib import Path
+    import pytest
+    if not Path("dataset/mvtec_anomaly_detection").exists():
+        pytest.skip("MVTec raw dataset not downloaded (see Docs/DATASET_SETUP.md)")
     test_dataset = MVTecTestDataset(
         dataset_root="dataset/mvtec_anomaly_detection",
         category="bottle"

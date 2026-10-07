@@ -7,6 +7,9 @@ from pathlib import Path
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 def test_anomaly_detector_init():
+    import pytest
+    if not Path("models/bottle/autoencoder.pth").exists():
+        pytest.skip("Legacy autoencoder.pth weights not present in repository")
     from src.detection.anomaly_detector import AnomalyDetector
     detector = AnomalyDetector(category="bottle")
     assert detector is not None
@@ -15,9 +18,17 @@ def test_anomaly_detector_init():
     assert detector.pixel_threshold == 0.20
 
 def test_anomaly_detector_inspect_defective():
+    import pytest
+    if not Path("models/bottle/autoencoder.pth").exists():
+        pytest.skip("Legacy autoencoder.pth weights not present in repository")
+    img_path = Path("dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png")
+    if not img_path.exists():
+        img_path = Path("assets/test_samples/bottle/broken_large_000.png")
+    if not img_path.exists():
+        pytest.skip("Test sample image not found")
     from src.detection.anomaly_detector import AnomalyDetector
     detector = AnomalyDetector(category="bottle")
-    res = detector.inspect("dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png")
+    res = detector.inspect(str(img_path))
     assert res["status"] == "DEFECTIVE"
     assert abs(res["score"] - 0.535785) < 1e-4
     assert res["bounding_box"] != "None"
@@ -29,9 +40,17 @@ def test_anomaly_detector_inspect_defective():
     assert bbox["height"] > 0
 
 def test_anomaly_detector_inspect_normal():
+    import pytest
+    if not Path("models/bottle/autoencoder.pth").exists():
+        pytest.skip("Legacy autoencoder.pth weights not present in repository")
+    img_path = Path("dataset/mvtec_anomaly_detection/bottle/test/good/001.png")
+    if not img_path.exists():
+        img_path = Path("assets/test_samples/bottle/good_001.png")
+    if not img_path.exists():
+        pytest.skip("Test sample image not found")
     from src.detection.anomaly_detector import AnomalyDetector
     detector = AnomalyDetector(category="bottle")
-    res = detector.inspect("dataset/mvtec_anomaly_detection/bottle/test/good/001.png")
+    res = detector.inspect(str(img_path))
     assert res["status"] == "NORMAL"
     assert res["bounding_box"] == "None"
 
@@ -89,12 +108,19 @@ def test_coordinate_scaling():
 
 def test_filename_uniqueness():
     """Test that inspection saves results under unique filenames based on category, type, and stem."""
+    import pytest
+    if not Path("models/bottle/autoencoder.pth").exists():
+        pytest.skip("Legacy autoencoder.pth weights not present in repository")
+    p1 = Path("dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png")
+    p2 = Path("dataset/mvtec_anomaly_detection/bottle/test/broken_small/000.png")
+    if not p1.exists() or not p2.exists():
+        pytest.skip("MVTec bottle test images not present")
     from src.detection.anomaly_detector import AnomalyDetector
     detector = AnomalyDetector(category="bottle")
     
     # Trigger inspect to generate filenames
-    res1 = detector.inspect("dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png")
-    res2 = detector.inspect("dataset/mvtec_anomaly_detection/bottle/test/broken_small/000.png")
+    res1 = detector.inspect(str(p1))
+    res2 = detector.inspect(str(p2))
     
     # Assert they are distinct and exist
     path1 = Path(res1["saved_path"])

@@ -13,8 +13,13 @@ def test_model_init():
 
 def test_model_load():
     """Test loading trained model weights from autoencoder.pth."""
+    from pathlib import Path
+    import pytest
+    weights_path = Path("models/bottle/autoencoder.pth")
+    if not weights_path.exists():
+        pytest.skip("Legacy autoencoder.pth weights not present in repository")
     model = Autoencoder()
-    state_dict = torch.load("models/bottle/autoencoder.pth", map_location="cpu")
+    state_dict = torch.load(str(weights_path), map_location="cpu")
     model.load_state_dict(state_dict)
     model.eval()
     

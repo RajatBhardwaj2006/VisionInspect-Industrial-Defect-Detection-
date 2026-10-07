@@ -62,14 +62,16 @@ def test_patchcore_v22_save_and_load():
 def test_patchcore_v22_detector_inspect():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_dir = Path("models/bottle/patchcore_v22")
-    if not model_dir.exists():
-        pytest.skip("PatchCore V2.2 trained model directory not found.")
+    if not (model_dir / "memory_bank.pt").exists():
+        pytest.skip("PatchCore V2.2 trained memory bank not found.")
         
-    detector = PatchCoreDetectorV22(category="bottle", model_dir=str(model_dir), device=device)
     test_img = Path("dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png")
+    if not test_img.exists():
+        test_img = Path("assets/test_samples/bottle/broken_large_000.png")
     if not test_img.exists():
         pytest.skip("Test image broken_large/000.png not found.")
         
+    detector = PatchCoreDetectorV22(category="bottle", model_dir=str(model_dir), device=device)
     result = detector.inspect(str(test_img))
     
     assert "status" in result
