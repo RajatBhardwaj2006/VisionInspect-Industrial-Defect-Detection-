@@ -25,6 +25,41 @@ import streamlit as st
 import requests
 from PIL import Image
 
+import sys
+
+# Ensure project root and app directory are in sys.path
+_current_dir = Path(__file__).resolve().parent
+_project_root = _current_dir.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+if str(_current_dir) not in sys.path:
+    sys.path.insert(0, str(_current_dir))
+
+try:
+    from components.model_docs import render_model_documentation_page, CATEGORY_DOCS
+except (ModuleNotFoundError, ImportError):
+    from app.components.model_docs import render_model_documentation_page, CATEGORY_DOCS
+
+from datetime import datetime
+
+import importlib
+try:
+    import utils.pdf_report as pdf_report_mod
+    importlib.reload(pdf_report_mod)
+    from utils.pdf_report import generate_inspection_pdf
+except (ModuleNotFoundError, ImportError):
+    try:
+        import app.utils.pdf_report as pdf_report_mod
+        importlib.reload(pdf_report_mod)
+        from app.utils.pdf_report import generate_inspection_pdf
+    except Exception:
+        from app.utils.pdf_report import generate_inspection_pdf
+
+try:
+    from components.footer import render_footer
+except (ModuleNotFoundError, ImportError):
+    from app.components.footer import render_footer
+
 # -----------------------------------------------------------------------------
 # 3D LOGO ASSET & PAGE CONFIGURATION
 # -----------------------------------------------------------------------------
@@ -46,66 +81,77 @@ DEFAULT_BACKEND_URL = os.environ.get("VISIONINSPECT_BACKEND_URL", "http://127.0.
 # -----------------------------------------------------------------------------
 # CATEGORY DEFINITIONS & VERIFIED SAMPLES
 # -----------------------------------------------------------------------------
+# Helper for portable sample resolution (falls back to assets/test_samples on fresh clones)
+def _resolve_sample(dataset_path: str, cat: str, filename: str) -> str:
+    p = Path(dataset_path)
+    if p.exists():
+        return str(p)
+    alt = Path("assets/test_samples") / cat / filename
+    if alt.exists():
+        return str(alt)
+    return str(p)
+
+
 CATEGORIES = {
     "bottle": {
         "name": "Bottle",
         "label": "Rigid Glass Container",
         "description": "Surface cracks, chipping, and particulate contamination.",
-        "golden_sample": "dataset/mvtec_anomaly_detection/bottle/test/good/001.png",
+        "golden_sample": _resolve_sample("dataset/mvtec_anomaly_detection/bottle/test/good/001.png", "bottle", "good_001.png"),
         "samples": [
-            ("Normal Baseline (Golden)", "dataset/mvtec_anomaly_detection/bottle/test/good/001.png"),
-            ("Broken Large Crack", "dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png"),
-            ("Broken Small Chipping", "dataset/mvtec_anomaly_detection/bottle/test/broken_small/000.png"),
-            ("Foreign Contamination", "dataset/mvtec_anomaly_detection/bottle/test/contamination/000.png"),
+            ("Normal Baseline (Golden)", _resolve_sample("dataset/mvtec_anomaly_detection/bottle/test/good/001.png", "bottle", "good_001.png")),
+            ("Broken Large Crack", _resolve_sample("dataset/mvtec_anomaly_detection/bottle/test/broken_large/000.png", "bottle", "broken_large_000.png")),
+            ("Broken Small Chipping", _resolve_sample("dataset/mvtec_anomaly_detection/bottle/test/broken_small/000.png", "bottle", "broken_small_000.png")),
+            ("Foreign Contamination", _resolve_sample("dataset/mvtec_anomaly_detection/bottle/test/contamination/000.png", "bottle", "contamination_000.png")),
         ]
     },
     "leather": {
         "name": "Leather",
         "label": "Surface Texture Fabric",
         "description": "Cuts, punctures, color flaws, and deep folds.",
-        "golden_sample": "dataset/mvtec_anomaly_detection/leather/test/good/001.png",
+        "golden_sample": _resolve_sample("dataset/mvtec_anomaly_detection/leather/test/good/001.png", "leather", "good_001.png"),
         "samples": [
-            ("Normal Baseline (Golden)", "dataset/mvtec_anomaly_detection/leather/test/good/001.png"),
-            ("Surface Cut", "dataset/mvtec_anomaly_detection/leather/test/cut/000.png"),
-            ("Deep Fold Mark", "dataset/mvtec_anomaly_detection/leather/test/fold/000.png"),
-            ("Color Flaw Patch", "dataset/mvtec_anomaly_detection/leather/test/color/000.png"),
+            ("Normal Baseline (Golden)", _resolve_sample("dataset/mvtec_anomaly_detection/leather/test/good/001.png", "leather", "good_001.png")),
+            ("Surface Cut", _resolve_sample("dataset/mvtec_anomaly_detection/leather/test/cut/000.png", "leather", "cut_000.png")),
+            ("Deep Fold Mark", _resolve_sample("dataset/mvtec_anomaly_detection/leather/test/fold/000.png", "leather", "fold_000.png")),
+            ("Color Flaw Patch", _resolve_sample("dataset/mvtec_anomaly_detection/leather/test/color/000.png", "leather", "color_000.png")),
         ]
     },
     "transistor": {
         "name": "Transistor",
         "label": "Semiconductor IC",
         "description": "Bent leads, cut pins, casing damage, and missing components.",
-        "golden_sample": "dataset/mvtec_anomaly_detection/transistor/test/good/001.png",
+        "golden_sample": _resolve_sample("dataset/mvtec_anomaly_detection/transistor/test/good/001.png", "transistor", "good_001.png"),
         "samples": [
-            ("Normal Baseline (Golden)", "dataset/mvtec_anomaly_detection/transistor/test/good/001.png"),
-            ("Bent Terminal Lead", "dataset/mvtec_anomaly_detection/transistor/test/bent_lead/000.png"),
-            ("Cut Terminal Lead", "dataset/mvtec_anomaly_detection/transistor/test/cut_lead/000.png"),
-            ("Damaged Package Casing", "dataset/mvtec_anomaly_detection/transistor/test/damaged_case/000.png"),
-            ("Missing Component Body", "dataset/mvtec_anomaly_detection/transistor/test/misplaced/002.png"),
+            ("Normal Baseline (Golden)", _resolve_sample("dataset/mvtec_anomaly_detection/transistor/test/good/001.png", "transistor", "good_001.png")),
+            ("Bent Terminal Lead", _resolve_sample("dataset/mvtec_anomaly_detection/transistor/test/bent_lead/000.png", "transistor", "bent_lead_000.png")),
+            ("Cut Terminal Lead", _resolve_sample("dataset/mvtec_anomaly_detection/transistor/test/cut_lead/000.png", "transistor", "cut_lead_000.png")),
+            ("Damaged Package Casing", _resolve_sample("dataset/mvtec_anomaly_detection/transistor/test/damaged_case/000.png", "transistor", "damaged_case_000.png")),
+            ("Missing Component Body", _resolve_sample("dataset/mvtec_anomaly_detection/transistor/test/misplaced/002.png", "transistor", "misplaced_002.png")),
         ]
     },
     "zipper": {
         "name": "Zipper",
         "label": "Mechanical Fastener",
         "description": "Broken teeth, split tooth gaps, and fabric weave roughness.",
-        "golden_sample": "dataset/mvtec_anomaly_detection/zipper/test/good/001.png",
+        "golden_sample": _resolve_sample("dataset/mvtec_anomaly_detection/zipper/test/good/001.png", "zipper", "good_001.png"),
         "samples": [
-            ("Normal Baseline (Golden)", "dataset/mvtec_anomaly_detection/zipper/test/good/001.png"),
-            ("Broken Teeth Chain", "dataset/mvtec_anomaly_detection/zipper/test/broken_teeth/000.png"),
-            ("Split Teeth Gap", "dataset/mvtec_anomaly_detection/zipper/test/split_teeth/000.png"),
-            ("Fabric Edge Roughness", "dataset/mvtec_anomaly_detection/zipper/test/rough/000.png"),
+            ("Normal Baseline (Golden)", _resolve_sample("dataset/mvtec_anomaly_detection/zipper/test/good/001.png", "zipper", "good_001.png")),
+            ("Broken Teeth Chain", _resolve_sample("dataset/mvtec_anomaly_detection/zipper/test/broken_teeth/000.png", "zipper", "broken_teeth_000.png")),
+            ("Split Teeth Gap", _resolve_sample("dataset/mvtec_anomaly_detection/zipper/test/split_teeth/000.png", "zipper", "split_teeth_000.png")),
+            ("Fabric Edge Roughness", _resolve_sample("dataset/mvtec_anomaly_detection/zipper/test/rough/000.png", "zipper", "rough_000.png")),
         ]
     },
     "screw": {
         "name": "Screw",
         "label": "Threaded Metal Fastener",
         "description": "Thread deformation, drive head scratches, and metal flaws.",
-        "golden_sample": "dataset/mvtec_anomaly_detection/screw/test/good/001.png",
+        "golden_sample": _resolve_sample("dataset/mvtec_anomaly_detection/screw/test/good/001.png", "screw", "good_001.png"),
         "samples": [
-            ("Normal Baseline (Golden)", "dataset/mvtec_anomaly_detection/screw/test/good/001.png"),
-            ("Drive Head Scratch", "dataset/mvtec_anomaly_detection/screw/test/scratch_head/000.png"),
-            ("Thread Side Flaw", "dataset/mvtec_anomaly_detection/screw/test/thread_side/000.png"),
-            ("Manipulated Front Face", "dataset/mvtec_anomaly_detection/screw/test/manipulated_front/000.png"),
+            ("Normal Baseline (Golden)", _resolve_sample("dataset/mvtec_anomaly_detection/screw/test/good/001.png", "screw", "good_001.png")),
+            ("Drive Head Scratch", _resolve_sample("dataset/mvtec_anomaly_detection/screw/test/scratch_head/000.png", "screw", "scratch_head_000.png")),
+            ("Thread Side Flaw", _resolve_sample("dataset/mvtec_anomaly_detection/screw/test/thread_side/000.png", "screw", "thread_side_000.png")),
+            ("Manipulated Front Face", _resolve_sample("dataset/mvtec_anomaly_detection/screw/test/manipulated_front/000.png", "screw", "manipulated_front_000.png")),
         ]
     }
 }
@@ -139,6 +185,24 @@ if "quick_sample_choice" not in st.session_state:
     st.session_state["quick_sample_choice"] = None
 if "theme_mode" not in st.session_state:
     st.session_state["theme_mode"] = "light"
+if "selected_model_doc" not in st.session_state:
+    param_model = st.query_params.get("model") or st.query_params.get("category")
+    if param_model and param_model.lower() in CATEGORY_DOCS:
+        st.session_state["selected_model_doc"] = param_model.lower()
+        st.session_state["nav_page"] = "Models"
+    else:
+        st.session_state["selected_model_doc"] = None
+if "category_mismatch_info" not in st.session_state:
+    st.session_state["category_mismatch_info"] = None
+
+# Handle direct page query parameter navigation (e.g. from footer links)
+param_page = st.query_params.get("page")
+if param_page:
+    target_page = param_page.strip().title()
+    if target_page in ["Home", "Inspect", "Models", "About"]:
+        st.session_state["nav_page"] = target_page
+        if target_page != "Models":
+            st.session_state["selected_model_doc"] = None
 
 # Helper to purge inspection state atomically
 def purge_inspection(new_category: Optional[str] = None):
@@ -149,6 +213,7 @@ def purge_inspection(new_category: Optional[str] = None):
     st.session_state["uploaded_image_data"] = None
     st.session_state["uploaded_images_list"] = []
     st.session_state["quick_sample_choice"] = None
+    st.session_state["category_mismatch_info"] = None
     st.session_state["sample_select_counter"] = st.session_state.get("sample_select_counter", 0) + 1
     if new_category:
         st.session_state["selected_category"] = new_category
@@ -158,6 +223,42 @@ def render_html(content: str):
     cleaned_lines = [line.strip() for line in content.strip().split("\n") if line.strip()]
     cleaned_content = "\n".join(cleaned_lines)
     st.markdown(cleaned_content, unsafe_allow_html=True)
+
+# Modal Popup Dialog for Category / Component Mismatch
+@st.dialog("⚠️ Model & Component Mismatch Detected")
+def show_category_mismatch_dialog(mismatch_info: Dict[str, Any]):
+    sel_name = mismatch_info.get("selected_model", "").title()
+    det_name = mismatch_info.get("detected_image", "").title()
+    fname = mismatch_info.get("filename", "uploaded_sample.png")
+
+    render_html(f"""
+    <div style="background: rgba(239, 68, 68, 0.08); border: 1.5px solid #EF4444; border-radius: 8px; padding: 16px 18px; margin-bottom: 14px;">
+        <div style="font-size: 0.76rem; font-weight: 800; letter-spacing: 0.08em; color: #EF4444; text-transform: uppercase; margin-bottom: 4px;">
+            INCOMPATIBLE COMPONENT DETECTED
+        </div>
+        <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); line-height: 1.35;">
+            You have selected the <span style="color: #EF4444; text-decoration: underline;">{sel_name}</span> model, but you uploaded a <span style="color: #22C55E; font-weight: 800;">{det_name}</span> image.
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; font-family: monospace;">
+            File: {fname}
+        </div>
+    </div>
+    <div style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
+        VisionInspect's feature analysis identified that this image does not belong to the selected <strong>{sel_name}</strong> inspection model. Running defect inspection on an incompatible component will trigger false rejections and invalid heatmaps.
+    </div>
+    """)
+
+    dlg_col1, dlg_col2 = st.columns([1.2, 1.2], gap="small")
+    with dlg_col1:
+        if st.button("Return to Upload Section", key="dlg_return_to_upload_btn", type="primary", use_container_width=True):
+            st.session_state["category_mismatch_info"] = None
+            st.rerun()
+    with dlg_col2:
+        if st.button(f"Switch to {det_name} Model", key="dlg_switch_to_detected_btn", type="secondary", use_container_width=True):
+            det_key = mismatch_info.get("detected_image", "").lower()
+            st.session_state["selected_category"] = det_key
+            st.session_state["category_mismatch_info"] = None
+            st.rerun()
 
 # Cached thumbnail helper for instant component catalog rendering
 @st.cache_data
@@ -383,12 +484,16 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
     if not is_defective:
         return {
             "status": "ACCEPT",
-            "display_title": "PASSED — SAFE TO USE",
+            "display_title": "NO VISIBLE ANOMALY DETECTED",
             "badge_color": "var(--success)",
             "badge_bg": "var(--success-bg)",
             "badge_border": "#BBF7D0",
-            "reason": f"Product is safe to use as there is no damage detected. Component conforms to nominal {cat_lower} specifications and is suitable for production/assembly.",
-            "action": "Clear component through optical quality gate to downstream operations."
+            "reason": f"Component conforms to nominal {cat_lower} specifications with no detected surface abnormalities. Based on optical comparison with known-good samples, this component shows no detectable surface defects.",
+            "action": "Continue normal production workflow.",
+            "quality_status": "NORMAL",
+            "usability_disposition": "No visible anomaly detected",
+            "recommended_action": "Continue normal production workflow",
+            "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
         }
 
     # Defective items: Category-specific usability rules
@@ -397,216 +502,297 @@ def get_usability_assessment(category: str, filename: str, is_defective: bool, s
         if ("misplaced" in fn_lower and "000" in fn_lower) or ("rotated" in fn_lower):
             return {
                 "status": "ACCEPT",
-                "display_title": "PASSED — SAFE TO USE",
+                "display_title": "NO CRITICAL DEFECT DETECTED (ROTATED)",
                 "badge_color": "var(--success)",
                 "badge_bg": "var(--success-bg)",
                 "badge_border": "#BBF7D0",
-                "reason": "Component orientation is rotated relative to baseline, but component body and terminal pins are fully intact. Product is safe to use with mechanical pick-and-place alignment.",
-                "action": "Accept component; re-orient via pick-and-place feeder before PCB placement."
+                "reason": "Component orientation is rotated relative to baseline, but component body and terminal pins are fully intact. Product conforms to pin integrity standards with mechanical pick-and-place alignment.",
+                "action": "Accept component; re-orient via pick-and-place feeder before PCB placement.",
+                "quality_status": "NORMAL",
+                "usability_disposition": "No critical defect detected (orientation offset)",
+                "recommended_action": "Re-orient via pick-and-place feeder before PCB placement",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "misplaced" in fn_lower or "missing" in fn_lower:
             return {
                 "status": "REJECT",
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Product is not safe to use because critical component parts are missing from the package casing.",
-                "action": "Reject unit immediately. Halt feeder if recurring."
+                "reason": "Visual defect detected: Critical component parts are missing from the package casing, impairing electrical contact and functional integrity.",
+                "action": "Reject unit immediately. Halt feeder if recurring.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Reject unit immediately and halt feeder if recurring",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "cut" in fn_lower or "damaged_case" in fn_lower:
             return {
                 "status": "REJECT",
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Product is not safe to use because severe casing rupture or severed pin prevents reliable electrical contact or environmental sealing.",
-                "action": "Reject unit. Scrap or return to supplier."
+                "reason": "Visual defect detected: Severe casing rupture or severed pin prevents reliable electrical contact or environmental sealing.",
+                "action": "Reject unit. Scrap or return to supplier.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Reject unit. Scrap or return to supplier",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "bent" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
-                "display_title": "NEED HUMAN INSPECTION",
+                "display_title": "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
                 "reason": "This product needs human inspection because its score is above threshold level, but all 3 legs are present and only bent or displaced. An operator or lead-forming fixture can inspect and re-straighten them.",
-                "action": "Manual inspection or mechanical lead re-straightening required."
+                "action": "Manual inspection or mechanical lead re-straightening required.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Send for secondary human quality review and lead re-straightening",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         else:
             status = "REJECT" if margin > 0.4 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED" if status == "REJECT" else "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
                 "reason": "Electrical or mechanical anomaly detected departing from nominal manifold.",
-                "action": "Secondary QA review required."
+                "action": "Secondary QA review required.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Send for secondary human quality review",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
 
     elif cat_lower == "screw":
         if "thread" in fn_lower:
             return {
                 "status": "REJECT",
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Product is not safe to use because thread damage was detected. The screw threads are damaged or stripped and cannot be screwed properly, impairing safe mechanical clamping.",
-                "action": "Reject fastener. Do not use in mechanical assembly."
+                "reason": "Thread damage detected: The screw threads are damaged or stripped and cannot be screwed properly, impairing safe mechanical clamping.",
+                "action": "Reject fastener. Do not use in mechanical assembly.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Reject fastener and quarantine lot",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "manipulated" in fn_lower:
             return {
                 "status": "REJECT",
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Product is not safe to use because front tip deformation or damaged lead-in impairs mechanical thread engagement.",
-                "action": "Reject fastener."
+                "reason": "Visual defect detected: Front tip deformation or damaged lead-in impairs mechanical thread engagement.",
+                "action": "Reject fastener.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Reject fastener",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "scratch" in fn_lower or "head" in fn_lower:
             if margin > 0.35:
                 return {
                     "status": "REJECT",
-                    "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                    "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                     "badge_color": "var(--danger)",
                     "badge_bg": "var(--danger-bg)",
                     "badge_border": "#FECACA",
-                    "reason": "Product is not safe to use because major drive head deformation compromises tool slot engagement.",
-                    "action": "Reject fastener."
+                    "reason": "Visual defect detected: Major drive head deformation compromises tool slot engagement.",
+                    "action": "Reject fastener.",
+                    "quality_status": "REVIEW REQUIRED",
+                    "usability_disposition": "Visual anomaly detected",
+                    "recommended_action": "Reject fastener",
+                    "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
                 }
             else:
                 return {
                     "status": "REQUIRES HUMAN REVIEW",
-                    "display_title": "NEED HUMAN INSPECTION",
+                    "display_title": "REQUIRES HUMAN REVIEW",
                     "badge_color": "var(--warning)",
                     "badge_bg": "var(--warning-bg)",
                     "badge_border": "#FDE68A",
                     "reason": "This product needs human inspection: threads are intact, but a minor cosmetic scratch was detected across the drive head. Review whether cosmetic criteria allow use.",
-                    "action": "Secondary QA disposition review for non-aesthetic applications."
+                    "action": "Secondary QA disposition review for non-aesthetic applications.",
+                    "quality_status": "REVIEW REQUIRED",
+                    "usability_disposition": "Visual anomaly detected",
+                    "recommended_action": "Send for secondary human quality review",
+                    "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
                 }
         else:
             status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED" if status == "REJECT" else "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
                 "reason": "Surface or geometric irregularity detected on screw.",
-                "action": "Review against mechanical tolerance limits."
+                "action": "Review against mechanical tolerance limits.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Send for secondary human quality review",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
 
     elif cat_lower == "leather":
         if "cut" in fn_lower:
             return {
                 "status": "REJECT",
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Product is not safe to use because surface cut was detected: incision compromises material tensile strength and structural integrity.",
-                "action": "Reject cut section or excise defective segment."
+                "reason": "Surface cut was detected: Incision compromises material tensile strength and structural integrity.",
+                "action": "Reject cut section or excise defective segment.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Reject cut section or excise defective segment",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "fold" in fn_lower or "color" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
-                "display_title": "NEED HUMAN INSPECTION",
+                "display_title": "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
                 "reason": "This product needs human inspection because its score is above threshold level, but there is only a surface fold crease or color mark that can be conditioned, repaired, or used for secondary panels.",
-                "action": "Review for secondary or non-visible grade utilization."
+                "action": "Review for secondary or non-visible grade utilization.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Review for secondary or non-visible grade utilization",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         else:
             status = "REJECT" if margin > 0.5 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED" if status == "REJECT" else "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
                 "reason": "Leather surface anomaly detected.",
-                "action": "Inspect piece against cosmetic grading criteria."
+                "action": "Inspect piece against cosmetic grading criteria.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Send for secondary human quality review",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
 
     elif cat_lower == "bottle":
         if "broken" in fn_lower or "mouth" in fn_lower or "crack" in fn_lower:
             return {
                 "status": "REJECT",
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Product is not safe to use: Rim chipping or structural crack compromises pressure seal and presents safety hazard.",
-                "action": "Reject and recycle glass container immediately."
+                "reason": "Rim chipping or structural crack compromises pressure seal and presents safety hazard.",
+                "action": "Reject and recycle glass container immediately.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Reject and recycle glass container immediately",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "contamination" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
-                "display_title": "NEED HUMAN INSPECTION",
+                "display_title": "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
                 "reason": "This product needs human inspection: surface contamination or particulate detected. Verify if washable or embedded in glass matrix.",
-                "action": "Route container to wash station for re-inspection."
+                "action": "Route container to wash station for re-inspection.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Route container to wash station for re-inspection",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         else:
             status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED" if status == "REJECT" else "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
                 "reason": "Optical deviation detected on container.",
-                "action": "Inspect container."
+                "action": "Inspect container.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Send for secondary human quality review",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
 
     elif cat_lower == "zipper":
         if "broken" in fn_lower or "split" in fn_lower or "teeth" in fn_lower:
             return {
                 "status": "REJECT",
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED",
                 "badge_color": "var(--danger)",
                 "badge_bg": "var(--danger-bg)",
                 "badge_border": "#FECACA",
-                "reason": "Product is not safe to use because teeth chain defect was detected: missing or broken zipper teeth prevent slider closure and cause separation.",
-                "action": "Reject fastener chain segment."
+                "reason": "Teeth chain defect detected: missing or broken zipper teeth prevent slider closure and cause separation.",
+                "action": "Reject fastener chain segment.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Reject fastener chain segment",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         elif "rough" in fn_lower or "fabric" in fn_lower:
             return {
                 "status": "REQUIRES HUMAN REVIEW",
-                "display_title": "NEED HUMAN INSPECTION",
+                "display_title": "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--warning)",
                 "badge_bg": "var(--warning-bg)",
                 "badge_border": "#FDE68A",
                 "reason": "This product needs human inspection: fabric roughness or weave irregularity detected along border edge. Check slider clearance and seam stitching integrity.",
-                "action": "Manual review of zipper sliding action."
+                "action": "Manual review of zipper sliding action.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Send for secondary human quality review of zipper sliding action",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
         else:
             status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
             return {
                 "status": status,
-                "display_title": "FAILED — NOT SAFE TO USE / REJECTED" if status == "REJECT" else "NEED HUMAN INSPECTION",
+                "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED" if status == "REJECT" else "REQUIRES HUMAN REVIEW",
                 "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
                 "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
                 "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
                 "reason": "Fastener deviation detected.",
-                "action": "Inspect zipper assembly."
+                "action": "Inspect zipper assembly.",
+                "quality_status": "REVIEW REQUIRED",
+                "usability_disposition": "Visual anomaly detected",
+                "recommended_action": "Send for secondary human quality review",
+                "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
             }
 
     status = "REJECT" if margin > 0.3 else "REQUIRES HUMAN REVIEW"
     return {
         "status": status,
+        "display_title": "VISUAL ANOMALY DETECTED — REVIEW REQUIRED" if status == "REJECT" else "REQUIRES HUMAN REVIEW",
         "badge_color": "var(--danger)" if status == "REJECT" else "var(--warning)",
         "badge_bg": "var(--danger-bg)" if status == "REJECT" else "var(--warning-bg)",
         "badge_border": "#FECACA" if status == "REJECT" else "#FDE68A",
         "reason": "Optical anomaly detected.",
-        "action": "Conduct manual QA review."
+        "action": "Conduct manual QA review.",
+        "quality_status": "REVIEW REQUIRED",
+        "usability_disposition": "Visual anomaly detected",
+        "recommended_action": "Send for secondary human quality review",
+        "disclaimer": "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards."
     }
 
 
@@ -680,7 +866,7 @@ render_html("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
     /* Global Chrome Removal & App Resets */
-    #MainMenu, header, footer, .stDeployButton {
+    #MainMenu, header, .stDeployButton, [data-testid="stFooter"], footer:not(.vi-footer-container) {
         display: none !important;
         visibility: hidden !important;
     }
@@ -704,15 +890,18 @@ render_html("""
         border-radius: 4px !important;
     }
 
-    /* Centered Layout Container (1280-1400px with 32px desktop padding) */
-    .block-container {
-        max-width: 1320px !important;
-        width: calc(100% - 64px) !important;
-        padding-left: 32px !important;
-        padding-right: 32px !important;
+    /* Clean, Edge-to-Edge Responsive Container with Balanced Side Margins */
+    .block-container,
+    div[data-testid="stMainBlockContainer"],
+    div[data-testid="stAppViewBlockContainer"] {
+        max-width: 96% !important;
+        width: 96% !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
         padding-top: 0.8rem !important;
-        padding-bottom: 2.5rem !important;
-        margin: 0 auto !important;
+        padding-bottom: 0.5rem !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
     }
 
     /* Standardized Crisp Button System */
@@ -1827,15 +2016,25 @@ render_html("""
         color: inherit !important;
     }
 
-    /* Theme Toggle Button (Light/Dark Mode) */
+    /* Theme Toggle Button (Light/Dark Mode - Icon-Only Logo Button) */
+    div.st-key-theme_toggle_btn {
+        display: flex !important;
+        justify-content: flex-end !important;
+    }
     div.st-key-theme_toggle_btn button {
-        border-radius: 6px !important;
+        border-radius: 8px !important;
         border: 1px solid var(--border-strong) !important;
         background-color: var(--surface) !important;
         color: var(--text-primary) !important;
-        font-size: 0.80rem !important;
-        font-weight: 600 !important;
-        padding: 0.45rem 0.75rem !important;
+        font-size: 1.15rem !important;
+        line-height: 1 !important;
+        padding: 0 !important;
+        height: 38px !important;
+        width: 38px !important;
+        min-width: 38px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         box-shadow: none !important;
         cursor: pointer !important;
         transition: all 0.15s ease !important;
@@ -1844,9 +2043,12 @@ render_html("""
         background-color: var(--surface-subtle) !important;
         border-color: var(--text-primary) !important;
         color: var(--text-primary) !important;
+        transform: translateY(-1px) !important;
     }
     div.st-key-theme_toggle_btn button * {
         color: inherit !important;
+        font-size: 1.15rem !important;
+        line-height: 1 !important;
     }
 </style>
 """)
@@ -1887,7 +2089,7 @@ if LOGO_3D_B64:
     </style>
     """)
 
-nav_col1, nav_col2, nav_col3, nav_col4 = st.columns([1.6, 2.8, 1.4, 0.9], gap="small")
+nav_col1, nav_col2, nav_col3, nav_col4 = st.columns([1.8, 3.2, 1.35, 0.38], gap="small")
 
 with nav_col1:
     btn_label = "VisionInspect" if LOGO_3D_B64 else "●  VisionInspect"
@@ -1924,9 +2126,10 @@ with nav_col3:
 
 with nav_col4:
     is_dark = (st.session_state.get("theme_mode", "light") == "dark")
-    theme_btn_label = "☼ Light" if not is_dark else "☾ Dark"
-    theme_tooltip = "Switch to Dark theme" if not is_dark else "Switch to Light theme"
-    if st.button(theme_btn_label, key="theme_toggle_btn", help=theme_tooltip, use_container_width=True):
+    # Icon-only day/night button (no text label)
+    theme_icon = "☀️" if is_dark else "🌙"
+    theme_tooltip = "Switch to Day mode" if is_dark else "Switch to Night mode"
+    if st.button(theme_icon, key="theme_toggle_btn", help=theme_tooltip, use_container_width=True):
         st.session_state["theme_mode"] = "dark" if not is_dark else "light"
         st.rerun()
 
@@ -2127,6 +2330,8 @@ elif st.session_state["nav_page"] == "Inspect":
         # Process each image independently
         st.session_state["inspection_results"] = []
         errors = []
+        mismatch_found = None
+
         for idx, item in enumerate(st.session_state["uploaded_images_list"]):
             fname = item["filename"]
             scan_bytes = item["bytes"]
@@ -2139,6 +2344,18 @@ elif st.session_state["nav_page"] == "Inspect":
                 )
                 if res.status_code == 200:
                     data = res.json()
+                    
+                    # Check for category compatibility mismatch
+                    comp = data.get("category_compatibility") or data.get("compatibility") or {}
+                    if comp.get("is_mismatch"):
+                        mismatch_found = {
+                            "selected_model": active_cat,
+                            "detected_image": comp.get("best_compatible_category", "unknown"),
+                            "filename": fname,
+                            "details": comp
+                        }
+                        break
+
                     data["orig_bytes"] = scan_bytes
                     data["filename"] = fname
                     data["size"] = item["size"]
@@ -2159,10 +2376,17 @@ elif st.session_state["nav_page"] == "Inspect":
             except Exception as e:
                 errors.append(f"{fname}: {e}")
 
+        st.session_state["is_scanning"] = False
+
+        if mismatch_found:
+            st.session_state["category_mismatch_info"] = mismatch_found
+            st.session_state["current_inspection"] = None
+            st.session_state["inspection_results"] = []
+            st.rerun()
+
         if errors:
             st.error("Some images encountered errors:\n" + "\n".join(errors))
 
-        st.session_state["is_scanning"] = False
         if st.session_state["inspection_results"]:
             st.session_state["active_result_idx"] = 0
             st.session_state["current_inspection"] = st.session_state["inspection_results"][0]
@@ -2226,24 +2450,24 @@ elif st.session_state["nav_page"] == "Inspect":
 
         st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
 
-        # 2. STATUS BANNER
+        # 1. STATUS BANNER & 2. ONE-LINE PLAIN-ENGLISH EXPLANATION
         render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.10em; color: var(--text-secondary); text-transform: uppercase;'>INSPECTION RESULT</div>")
 
         if is_defective:
             summary_text = f"{n_defects} localized anomaly region(s) detected exceeding inspection criteria." if n_defects > 0 else "Anomaly score exceeded inspection criteria."
             render_html(f"""
-            <div style="font-size: 2.3rem; font-weight: 800; color: var(--danger); letter-spacing: -0.02em; line-height: 1.1;">DEFECTIVE</div>
+            <div style="font-size: 2.3rem; font-weight: 800; color: var(--danger); letter-spacing: -0.02em; line-height: 1.1;">VISUAL ANOMALY DETECTED</div>
             <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">{summary_text}</div>
             """)
         else:
             render_html("""
             <div style="font-size: 2.3rem; font-weight: 800; color: var(--success); letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
-            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">No significant visual deviation detected under the current inspection criteria.</div>
+            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">No significant visual deviation detected under current inspection criteria.</div>
             """)
 
         st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-        # 4. THREE PANELS + VERTICAL HEATMAP SCALE (01 ORIGINAL | 02 ANOMALY MAP | 03 LOCALIZATION | 04 HEATMAP SCALE)
+        # 3. THREE PANELS + VERTICAL HEATMAP SCALE (01 ORIGINAL | 02 ANOMALY MAP | 03 DETECTED REGION | 04 HEATMAP SCALE)
         v_col1, v_col2, v_col3, v_col4 = st.columns([1.0, 1.0, 1.0, 0.28], gap="medium")
 
         # 01 ORIGINAL IMAGE
@@ -2253,29 +2477,29 @@ elif st.session_state["nav_page"] == "Inspect":
                 st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
             render_html(f"<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>File: {fname}</div>")
 
-        # 02 ANOMALY MAP
+        # 02 ANOMALY HEATMAP
         with v_col2:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>02 &nbsp; ANOMALY MAP</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>02 &nbsp; ANOMALY HEATMAP</div>")
             hm_b64 = res.get("heatmap_base64")
             if hm_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(hm_b64))), use_container_width=True)
-                render_html("<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>Density Heatmap Analysis</div>")
+                render_html("<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>Density Heatmap (Blue=Normal, Red=Deviation)</div>")
             else:
                 st.info("Anomaly map not available.")
 
-        # 03 DEFECT LOCALIZATION
+        # 03 DETECTED REGION
         with v_col3:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>03 &nbsp; DEFECT LOCALIZATION</div>")
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>03 &nbsp; DETECTED REGION</div>")
             vis_b64 = res.get("visualization_base64")
             if is_defective and vis_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(vis_b64))), use_container_width=True)
-                render_html(f"<div style='font-size: 0.68rem; color: var(--danger); margin-top: 4px; font-weight: 600;'>{n_defects} confirmed defect region(s) localized</div>")
+                render_html(f"<div style='font-size: 0.68rem; color: var(--danger); margin-top: 4px; font-weight: 600;'>{n_defects} visual anomaly region(s) detected</div>")
             else:
                 if orig_bytes:
                     st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
-                render_html("<div style='font-size: 0.68rem; color: var(--success); margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero anomaly clusters detected</div>")
+                render_html("<div style='font-size: 0.68rem; color: var(--success); margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero visual anomaly regions detected</div>")
 
-        # 04 HEATMAP SCALE (ON THE RIGHT SIDE AFTER 3 IMAGES)
+        # 04 HEATMAP SCALE
         with v_col4:
             render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px; text-align: center;'>HEATMAP SCALE</div>")
             render_html(f"""
@@ -2299,94 +2523,151 @@ elif st.session_state["nav_page"] == "Inspect":
 
         st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-        # 5. SCORE SECTION: EACH IN ITS OWN BOX IN ONE COLUMN WITH HOVER INFO POPUP
+        # 4. INSPECTION SCORES & METRICS (ONE COLUMN, EACH IN ITS OWN BOX WITH HOVER POPUP & REFERENCE BAR)
         render_html("<div style='font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>INSPECTION SCORES & METRICS</div>")
-        
+
         margin_sign = f"+{margin:.4f}" if margin > 0 else f"{margin:.4f}"
         margin_color = "var(--danger)" if margin > 0 else "var(--success)"
+
+        # Score calculations for reference range bar
+        score_status_text = "GOOD" if score <= th else "HIGH / ABOVE THRESHOLD"
+        score_badge_style = "background: var(--success-bg); color: var(--success); border: 1px solid #BBF7D0;" if score <= th else "background: var(--danger-bg); color: var(--danger); border: 1px solid #FECACA;"
+
+        max_range = max(th * 1.55, score * 1.25, 4.0)
+        th_pct = min(90.0, max(10.0, (th / max_range) * 100.0))
+        score_pct = min(96.0, max(4.0, (score / max_range) * 100.0))
+        pin_color = "#22C55E" if score <= th else "#EF4444"
+
+        # Threshold status
+        th_status_text = "SCORE BELOW THRESHOLD" if score <= th else "SCORE ABOVE THRESHOLD"
+        th_badge_style = "background: var(--success-bg); color: var(--success); border: 1px solid #BBF7D0;" if score <= th else "background: var(--danger-bg); color: var(--danger); border: 1px solid #FECACA;"
+
+        # Margin status
+        margin_status_text = "BELOW THRESHOLD" if margin <= 0 else "ABOVE THRESHOLD"
+        margin_badge_style = "background: var(--success-bg); color: var(--success); border: 1px solid #BBF7D0;" if margin <= 0 else "background: var(--danger-bg); color: var(--danger); border: 1px solid #FECACA;"
+
+        # Regions status
+        regions_status_text = "NO SUSPICIOUS REGION" if n_defects == 0 else f"{n_defects} AREA{'S' if n_defects > 1 else ''} FLAGGED"
+        regions_badge_style = "background: var(--success-bg); color: var(--success); border: 1px solid #BBF7D0;" if n_defects == 0 else "background: var(--danger-bg); color: var(--danger); border: 1px solid #FECACA;"
+
+        time_seconds = res.get("inference_time_s", latency_ms / 1000.0)
 
         render_html(f"""
         <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
             <!-- Box 1: Anomaly Score -->
             <div class="metric-card-box">
                 <div class="metric-card-header">
-                    <span class="metric-card-title">Anomaly Score : <span class="metric-card-num">{score:.4f}</span></span>
+                    <div>
+                        <span class="metric-card-title">Anomaly Score : <span class="metric-card-num">{score:.4f}</span></span>
+                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {score_badge_style}">{score_status_text}</span>
+                    </div>
                     <div class="info-tooltip-wrapper">
                         <span class="info-icon">i</span>
                         <div class="info-tooltip-box">
                             <strong style="color: #67E8F9;">Anomaly Score Explained:</strong><br>
                             • Compares tiny image patches against thousands of verified defect-free reference features.<br>
-                            • A higher numerical score signifies stronger visual departure from nominal factory baseline.<br>
-                            • If this value exceeds the threshold, the component is flagged as defective.<br>
+                            • Higher numerical score signifies stronger visual departure from nominal factory baseline.<br>
+                            • If this value exceeds the threshold, the component is flagged as anomalous.<br>
                             • Evaluated using PatchCore nearest-neighbor density estimation.
                         </div>
                     </div>
                 </div>
-                <div class="metric-card-desc">Measures the overall visual deviation of this component from nominal factory baseline samples.</div>
+
+                <!-- Reference Range Bar -->
+                <div style="margin: 8px 0 6px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-bottom: 3px; font-family: monospace;">
+                        <span>0.0000</span>
+                        <span style="color: var(--text-primary); font-weight: 600;">Threshold: {th:.4f}</span>
+                        <span>{max_range:.4f}</span>
+                    </div>
+                    <div style="position: relative; height: 8px; background: var(--surface-subtle); border-radius: 4px; overflow: visible; border: 1px solid var(--border);">
+                        <div style="position: absolute; left: 0; width: {th_pct:.1f}%; height: 100%; background: #22C55E; border-radius: 4px 0 0 4px; opacity: 0.85;"></div>
+                        <div style="position: absolute; left: {th_pct:.1f}%; right: 0; height: 100%; background: #EF4444; border-radius: 0 4px 4px 0; opacity: 0.85;"></div>
+                        <div style="position: absolute; left: calc({score_pct:.1f}% - 4px); top: -3px; width: 8px; height: 14px; background: {pin_color}; border: 1.5px solid #FFFFFF; border-radius: 2px; box-shadow: 0 1px 4px rgba(0,0,0,0.4);" title="Score: {score:.4f}"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--text-muted); margin-top: 4px;">
+                        <span>NORMAL / LOW DEVIATION</span>
+                        <span>REVIEW / ANOMALOUS</span>
+                    </div>
+                </div>
+
+                <div class="metric-card-desc">Measures overall visual deviation from nominal factory baseline samples.</div>
             </div>
 
-            <!-- Box 2: Threshold -->
+            <!-- Box 2: Inspection Threshold -->
             <div class="metric-card-box">
                 <div class="metric-card-header">
-                    <span class="metric-card-title">Threshold : <span class="metric-card-num">{th:.4f}</span></span>
+                    <div>
+                        <span class="metric-card-title">Inspection Threshold : <span class="metric-card-num">{th:.4f}</span></span>
+                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {th_badge_style}">{th_status_text}</span>
+                    </div>
                     <div class="info-tooltip-wrapper">
                         <span class="info-icon">i</span>
                         <div class="info-tooltip-box">
                             <strong style="color: #67E8F9;">Inspection Threshold Explained:</strong><br>
                             • Statistically calibrated cutoff separating normal from defective components.<br>
-                            • Components with scores below this limit are accepted as defect-free.<br>
-                            • Scores above this limit trigger rejection or human engineering review.<br>
+                            • Components with scores below this limit pass inspection.<br>
+                            • Scores above this limit trigger quality review.<br>
                             • Calibrated with a 99.5% confidence bound to prevent false production stops.
                         </div>
                     </div>
                 </div>
-                <div class="metric-card-desc">The maximum allowable anomaly score separating acceptable components from non-conforming parts.</div>
+                <div class="metric-card-desc">Maximum allowable deviation before a component is flagged for quality review.</div>
             </div>
 
             <!-- Box 3: Decision Margin -->
             <div class="metric-card-box">
                 <div class="metric-card-header">
-                    <span class="metric-card-title">Decision Margin : <span class="metric-card-num" style="color: {margin_color};">{margin_sign}</span></span>
+                    <div>
+                        <span class="metric-card-title">Decision Margin : <span class="metric-card-num" style="color: {margin_color};">{margin_sign}</span></span>
+                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {margin_badge_style}">{margin_status_text}</span>
+                    </div>
                     <div class="info-tooltip-wrapper">
                         <span class="info-icon">i</span>
                         <div class="info-tooltip-box">
                             <strong style="color: #67E8F9;">Decision Margin Explained:</strong><br>
                             • Calculated mathematically as: Anomaly Score minus Threshold.<br>
-                            • Positive (+) margin indicates the defect severity exceeds factory tolerance limits.<br>
-                            • Negative (−) margin means the component conforms comfortably within quality clearance.<br>
+                            • Negative (−) margin means component conforms safely within tolerance.<br>
+                            • Positive (+) margin indicates defect severity exceeds factory tolerance.<br>
                             • Larger positive numbers indicate more severe structural or surface damage.
                         </div>
                     </div>
                 </div>
-                <div class="metric-card-desc">The distance between the component's anomaly score and the calibrated acceptance cutoff.</div>
+                <div class="metric-card-desc">Distance between the component's anomaly score and the calibrated acceptance cutoff.</div>
             </div>
 
-            <!-- Box 4: Defect Regions -->
+            <!-- Box 4: Detected Anomaly Regions -->
             <div class="metric-card-box">
                 <div class="metric-card-header">
-                    <span class="metric-card-title">Defect Regions : <span class="metric-card-num">{n_defects}</span></span>
+                    <div>
+                        <span class="metric-card-title">Detected Anomaly Regions : <span class="metric-card-num">{n_defects}</span></span>
+                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {regions_badge_style}">{regions_status_text}</span>
+                    </div>
                     <div class="info-tooltip-wrapper">
                         <span class="info-icon">i</span>
                         <div class="info-tooltip-box">
-                            <strong style="color: #67E8F9;">Defect Regions Explained:</strong><br>
-                            • Counts contiguous clusters of pixels whose anomaly scores exceed the pixel threshold.<br>
+                            <strong style="color: #67E8F9;">Detected Anomaly Regions Explained:</strong><br>
+                            • Groups contiguous anomalous pixels into distinct defect regions.<br>
                             • Filters out single-pixel sensor noise and optical artifacts.<br>
                             • Each cluster is assigned a bounding box, surface area, and severity rating.<br>
                             • Defect-free components will always exhibit exactly 0 detected defect regions.
                         </div>
                     </div>
                 </div>
-                <div class="metric-card-desc">The total number of localized anomaly clusters flagged across the surface of the component.</div>
+                <div class="metric-card-desc">Number of localized surface regions flagged by the vision model.</div>
             </div>
 
-            <!-- Box 5: Inference Latency -->
+            <!-- Box 5: Inspection Time -->
             <div class="metric-card-box">
                 <div class="metric-card-header">
-                    <span class="metric-card-title">Inference Latency : <span class="metric-card-num">{int(latency_ms)} ms</span></span>
+                    <div>
+                        <span class="metric-card-title">Inspection Time : <span class="metric-card-num">{time_seconds:.2f} seconds</span></span>
+                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; background: var(--surface-subtle); color: var(--text-secondary); border: 1px solid var(--border);">{int(latency_ms)} ms</span>
+                    </div>
                     <div class="info-tooltip-wrapper">
                         <span class="info-icon">i</span>
                         <div class="info-tooltip-box">
-                            <strong style="color: #67E8F9;">Inference Latency Explained:</strong><br>
+                            <strong style="color: #67E8F9;">Inspection Time Explained:</strong><br>
                             • Real-world time taken to extract features, evaluate embeddings, and build heatmaps.<br>
                             • Optimized for high-throughput automated inspection gates on the factory floor.<br>
                             • Enables line speeds of tens to hundreds of parts per minute without bottlenecks.<br>
@@ -2394,92 +2675,156 @@ elif st.session_state["nav_page"] == "Inspect":
                         </div>
                     </div>
                 </div>
-                <div class="metric-card-desc">Total execution duration taken by the vision model to process and evaluate this image.</div>
+                <div class="metric-card-desc">Total duration required by the vision model to analyze and evaluate this image.</div>
             </div>
         </div>
         """)
 
-        # 6, 7, 8: WHY IS THIS PRODUCT DEFECTIVE? (4.1 WHAT FOUND | 4.2 WHERE | 4.3 USABILITY)
+        # 5. WHY DID VISIONINSPECT GIVE THIS RESULT? (FINDINGS & WHERE)
         why_heading, defect_desc, where_text, why_flagged_text = get_defect_explanation(
             active_cat, fname, is_defective, score, th, n_defects, margin
         )
-        usab = get_usability_assessment(active_cat, fname, is_defective, score, th, n_defects, margin)
-        usability_title = usab.get("display_title", usab["status"])
-        usability_badge = f'<span style="display:inline-block; padding: 4px 12px; border-radius: 4px; background: {usab["badge_bg"]}; color: {usab["badge_color"]}; font-weight: 700; font-size: 0.74rem; border: 1px solid {usab["badge_border"]}; letter-spacing: 0.04em;">{usability_title}</span>'
 
-        # Coordinates details string if regions exist
-        coords_detail_html = ""
-        if is_defective and regs:
-            coords_items = []
-            for r_idx, reg in enumerate(regs[:4]):
-                lbl = reg.get("label", f"Region {r_idx+1:02d}")
-                bbox = reg.get("bbox", [0, 0, 0, 0])
-                coords_items.append(f"<strong>{lbl}:</strong> [X: {bbox[0]}–{bbox[2]}, Y: {bbox[1]}–{bbox[3]}] ({reg.get('area', 0)} px)")
-            coords_detail_html = f"<div style='font-size: 0.76rem; color: var(--text-secondary); margin-top: 6px; font-family: ui-monospace, monospace;'>" + " • ".join(coords_items) + "</div>"
+        # User-facing location text (No raw coordinates or bounding box numbers)
+        if is_defective:
+            user_where_text = f"The highlighted area shows where VisionInspect detected the visual difference on the {active_cat.lower()} surface."
+        else:
+            user_where_text = f"No unusual visual regions were detected. The {active_cat.lower()} surface conforms to nominal baseline appearance."
 
         render_html(f"""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div style="font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
-                {why_heading}
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                5. WHY DID VISIONINSPECT GIVE THIS RESULT?
             </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-                <!-- 4.1 WHAT MODEL FOUND -->
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- 5.1 WHAT DID VISIONINSPECT FIND? -->
                 <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
-                    <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
-                        4.1 WHAT THE MODEL FOUND (FINDINGS)
+                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                        5.1 WHAT DID VISIONINSPECT FIND?
                     </div>
                     <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.5; font-weight: 500;">
                         {defect_desc}
                     </div>
                 </div>
 
-                <!-- 4.2 WHERE (REGION LOCATION) -->
+                <!-- 5.2 WHERE WAS THE ANOMALY DETECTED? -->
                 <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
-                    <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
-                        4.2 DEFECT REGION LOCATION (WHERE)
+                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                        5.2 WHERE WAS THE ANOMALY DETECTED?
                     </div>
                     <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.5;">
-                        {where_text}
-                    </div>
-                    {coords_detail_html}
-                </div>
-
-                <!-- 4.3 IS THIS PRODUCT STILL USABLE? -->
-                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                        <span style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase;">
-                            4.3 IS THIS PRODUCT STILL USABLE? (USABILITY ASSESSMENT)
-                        </span>
-                        {usability_badge}
-                    </div>
-                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 12px; font-weight: 500;">
-                        {usab["reason"]}
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 0.80rem;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-secondary);">Quality Status:</span>
-                            <span style="color: {'var(--danger)' if is_defective else 'var(--success)'}; font-weight: 700;">{status}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-secondary);">Usability Disposition:</span>
-                            <span style="color: {usab['badge_color']}; font-weight: 700;">{usability_title}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="color: var(--text-secondary);">Recommended Action:</span>
-                            <span style="color: var(--text-primary); font-weight: 600;">{usab['action']}</span>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.70rem; color: var(--text-muted); margin-top: 10px; line-height: 1.4;">
-                        Based on visual inspection. The system detects visual anomalies; it does not independently certify whether a physical component is safe to use.
+                        {user_where_text}
                     </div>
                 </div>
             </div>
         </div>
         """)
 
-        # 5. REJECTION AREA & TECHNICAL DETAILS (ENGINEERING & QA REPORT)
-        # Build rejection regions table HTML
+        # 6. ANOMALY DETECTION REGION (SEPARATE DISTINCT CARD WITHOUT RAW COORDINATES)
+        if not is_defective or n_defects == 0:
+            render_html(f"""
+            <div style="background: var(--surface); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="color: var(--success); font-weight: 800; font-size: 1.0rem;">✓</span>
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--success); letter-spacing: 0.04em;">6. NO ANOMALY REGION DETECTED</span>
+                </div>
+                <div style="font-size: 0.80rem; color: var(--text-secondary); line-height: 1.45;">
+                    No localized visual anomaly regions were detected. The {active_cat.lower()} surface is uniform and conforms to learned nominal patterns.
+                </div>
+            </div>
+            """)
+        else:
+            cat_name = active_cat.lower()
+            render_html(f"""
+            <div style="background: var(--surface); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="color: var(--danger); font-weight: 800; font-size: 1.0rem;">!</span>
+                        <span style="font-size: 0.82rem; font-weight: 700; color: var(--danger); letter-spacing: 0.04em;">6. ANOMALY REGION DETECTED</span>
+                    </div>
+                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--danger); background: var(--danger-bg); border: 1px solid #FECACA; padding: 2px 8px; border-radius: 4px;">{n_defects} ANOMALY REGION{'S' if n_defects > 1 else ''} DETECTED</span>
+                </div>
+                <div style="font-size: 0.84rem; color: var(--text-primary); line-height: 1.5; margin-bottom: 4px; font-weight: 500;">
+                    An unusual visual area was detected on the {cat_name} surface.
+                </div>
+                <div style="font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45;">
+                    The highlighted area in the image above shows where VisionInspect detected the visual difference. For exact pixel coordinates, bounding boxes, and dimensions, refer to the Technical Report below.
+                </div>
+            </div>
+            """)
+
+        # 7 & 8: PRODUCT USABILITY / INSPECTION DISPOSITION & QUALITY STATUS TRIAD
+        usab = get_usability_assessment(active_cat, fname, is_defective, score, th, n_defects, margin)
+        disp_title = usab.get("display_title", "NO VISIBLE ANOMALY DETECTED" if not is_defective else "VISUAL ANOMALY DETECTED")
+        q_status = usab.get("quality_status", "NORMAL" if not is_defective else "REVIEW REQUIRED")
+        q_status_color = "var(--success)" if not is_defective else "var(--danger)"
+        u_disp = usab.get("usability_disposition", "No visible anomaly detected" if not is_defective else "Visual anomaly detected")
+        r_action = usab.get("action", usab.get("recommended_action", "Continue normal production workflow" if not is_defective else "Send for secondary human quality review"))
+        disclaimer_text = usab.get("disclaimer", "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards.")
+
+        render_html(f"""
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 0.76rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">
+                    7. PRODUCT USABILITY / INSPECTION DISPOSITION
+                </span>
+                <span style="display:inline-block; padding: 4px 12px; border-radius: 4px; background: {usab.get('badge_bg', 'var(--surface-subtle)')}; color: {usab.get('badge_color', 'var(--text-primary)')}; font-weight: 700; font-size: 0.74rem; border: 1px solid {usab.get('badge_border', 'var(--border)')}; letter-spacing: 0.04em;">
+                    {disp_title}
+                </span>
+            </div>
+
+            <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 14px; font-weight: 500;">
+                {usab.get("reason", "")}
+            </div>
+
+            <!-- 8. QUALITY STATUS / USABILITY DISPOSITION / RECOMMENDED ACTION -->
+            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+                8. QUALITY STATUS & RECOMMENDED ACTIONS
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Quality Status</div>
+                    <div style="font-size: 0.86rem; font-weight: 700; color: {q_status_color}; margin-top: 2px;">{q_status}</div>
+                </div>
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Usability Disposition</div>
+                    <div style="font-size: 0.86rem; font-weight: 700; color: {usab.get('badge_color', 'var(--text-primary)')}; margin-top: 2px;">{u_disp}</div>
+                </div>
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px;">
+                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Recommended Action</div>
+                    <div style="font-size: 0.84rem; font-weight: 600; color: var(--text-primary); margin-top: 2px;">{r_action}</div>
+                </div>
+            </div>
+
+            <div style="font-size: 0.70rem; color: var(--text-muted); line-height: 1.45; border-top: 1px solid var(--border); padding-top: 10px;">
+                <strong>Regulatory Notice:</strong> {disclaimer_text}
+            </div>
+        </div>
+        """)
+
+        # 9. MODEL USED CARD WITH DOCUMENTATION LINK
+        m_col1, m_col2 = st.columns([3.2, 1.2], gap="small")
+        with m_col1:
+            render_html(f"""
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; margin-bottom: 14px;">
+                <div style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">9. MODEL USED</div>
+                <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;">
+                    PatchCore v2.3 <span style="font-size: 0.80rem; font-weight: 500; color: var(--text-secondary);">• {active_cat.title()} Model</span>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                    Unsupervised Density-based Anomaly Localization with Greedy Coreset Subsampling
+                </div>
+            </div>
+            """)
+        with m_col2:
+            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+            if st.button(f"View {active_cat.title()} Docs →", key="res_view_model_doc_btn", type="secondary", use_container_width=True):
+                st.session_state["selected_model_doc"] = active_cat
+                st.session_state["nav_page"] = "Models"
+                st.rerun()
+
+        # 10. TECHNICAL DETAILS / REJECTION AREA ANALYSIS (ENGINEERING & QA REPORT)
         if is_defective and regs:
             reg_rows_html = ""
             for r_idx, reg in enumerate(regs):
@@ -2510,7 +2855,7 @@ elif st.session_state["nav_page"] == "Inspect":
             </tr>
             """
 
-        with st.expander("Rejection Area & Technical Details (Engineering & QA Report)", expanded=False):
+        with st.expander("10. Technical Inspection Report — Engineering & QA", expanded=False):
             render_html(f"""
             <div style="margin-bottom: 16px;">
                 <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
@@ -2533,9 +2878,31 @@ elif st.session_state["nav_page"] == "Inspect":
                 </table>
             </div>
 
+            <!-- Pipeline Architecture Flow Diagram -->
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+                    2. PIPELINE ARCHITECTURE FLOW
+                </div>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 12px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; font-size: 0.72rem;">
+                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Input Image (224×224)</span>
+                    <span style="color: var(--text-muted); font-weight: 700;">→</span>
+                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">ResNet-18 Feature Extraction</span>
+                    <span style="color: var(--text-muted); font-weight: 700;">→</span>
+                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Patch Neighborhood Pooling</span>
+                    <span style="color: var(--text-muted); font-weight: 700;">→</span>
+                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Memory Bank Coreset Search</span>
+                    <span style="color: var(--text-muted); font-weight: 700;">→</span>
+                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Anomaly Heatmap</span>
+                    <span style="color: var(--text-muted); font-weight: 700;">→</span>
+                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Dual-Gated Thresholding</span>
+                    <span style="color: var(--text-muted); font-weight: 700;">→</span>
+                    <span style="padding: 4px 8px; background: var(--surface); border: 1.5px solid var(--text-primary); border-radius: 4px; font-weight: 700;">Final Verdict</span>
+                </div>
+            </div>
+
             <div>
                 <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
-                    2. MODEL ARCHITECTURE & CALIBRATION PARAMETERS
+                    3. MODEL ARCHITECTURE & CALIBRATION PARAMETERS
                 </div>
                 <table class="tech-table">
                     <thead>
@@ -2605,16 +2972,74 @@ elif st.session_state["nav_page"] == "Inspect":
             </div>
             """)
 
-        # 12. INSPECT ANOTHER BUTTON
+        # 11. RECENT INSPECTIONS (SESSION)
+        if st.session_state.get("recent_inspections"):
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>11. RECENT INSPECTIONS (SESSION)</div>")
+            hist_rows = []
+            for item in st.session_state["recent_inspections"][:4]:
+                badge_color = "var(--danger)" if item["status"] == "DEFECTIVE" else "var(--success)"
+                hist_rows.append(
+                    f"<div style='display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.80rem;'>"
+                    f"<span><span style='font-weight:600; color:var(--text-primary);'>#{item['id']}</span> &nbsp; {item['category'].title()} &nbsp;•&nbsp; <code style='font-size:0.75rem; color:var(--text-secondary);'>{item['filename'][:20]}</code></span>"
+                    f"<span style='color:{badge_color}; font-weight:700;'>{item['status']}</span>"
+                    f"<span style='color:var(--text-secondary);'>Score: {item['score']:.4f}</span>"
+                    f"<span style='color:var(--text-muted);'>Latency: {item['time_s']:.2f}s</span>"
+                    f"</div>"
+                )
+            render_html(f"<div style='background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 16px;'>{''.join(hist_rows)}</div>")
+
+        # 12. DOWNLOAD REPORT AS PDF & INSPECT ANOTHER
         st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-        if st.button("Inspect Another Image →", key="res_bottom_inspect_btn", type="primary", use_container_width=True):
-            purge_inspection()
-            st.rerun()
+        pdf_c1, pdf_c2 = st.columns([1.5, 1.5], gap="medium")
+
+        with pdf_c1:
+            try:
+                pdf_bytes = generate_inspection_pdf(
+                    inspection_data=res,
+                    category=active_cat,
+                    filename=fname,
+                    original_image_bytes=orig_bytes,
+                    heatmap_base64=res.get("heatmap_base64"),
+                    visualization_base64=res.get("visualization_base64"),
+                    why_findings=defect_desc,
+                    where_text=user_where_text,
+                    disposition_text=disp_title,
+                    action_text=r_action,
+                    quality_status_text=q_status,
+                )
+                pdf_date_str = datetime.now().strftime("%Y-%m-%d")
+                pdf_filename = f"VisionInspect_{active_cat.title()}_{pdf_date_str}_Inspection_Report.pdf"
+
+                st.download_button(
+                    label="↓ Download Inspection Report (PDF)",
+                    data=pdf_bytes,
+                    file_name=pdf_filename,
+                    mime="application/pdf",
+                    key="res_download_pdf_report_btn",
+                    type="secondary",
+                    use_container_width=True
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger("VisionInspect").error(f"PDF generation failed: {e}", exc_info=True)
+                st.warning("Unable to generate the report. Please try again.")
+                if st.button("Retry Report Generation", key="retry_pdf_gen_btn"):
+                    st.rerun()
+
+        with pdf_c2:
+            if st.button("Inspect Another Image →", key="res_bottom_inspect_btn", type="primary", use_container_width=True):
+                purge_inspection()
+                st.rerun()
 
     # -------------------------------------------------------------------------
     # STATE C: 3-COLUMN INSPECTION LAYOUT (LEFT GUIDE | CENTER DROPZONE | RIGHT CATALOG)
     # -------------------------------------------------------------------------
     else:
+        # Trigger popup dialog if a category mismatch was detected
+        if st.session_state.get("category_mismatch_info"):
+            show_category_mismatch_dialog(st.session_state["category_mismatch_info"])
+
         left_col, center_col, right_col = st.columns([1.1, 1.85, 1.15], gap="large")
 
         # LEFT COLUMN: Process Guide & Introduction
@@ -2662,6 +3087,17 @@ elif st.session_state["nav_page"] == "Inspect":
 
         # CENTER COLUMN: Main Visual Focus (Upload Queue or Empty Dropzone)
         with center_col:
+            if st.session_state.get("category_mismatch_info"):
+                m_info = st.session_state["category_mismatch_info"]
+                sel_m = m_info.get("selected_model", "").title()
+                det_m = m_info.get("detected_image", "").title()
+                f_name = m_info.get("filename", "")
+                st.error(
+                    f"⚠️ **Incompatible Component:** You have selected the **{sel_m}** model, "
+                    f"but you have uploaded a **{det_m}** image (`{f_name}`). "
+                    f"Please switch model or upload a matching {sel_m} image."
+                )
+
             queued_images = st.session_state["uploaded_images_list"]
 
             if queued_images:
@@ -2840,106 +3276,210 @@ elif st.session_state["nav_page"] == "Inspect":
                     </div>
                     """)
 
-    # -------------------------------------------------------------------------
-    # RECENT INSPECTIONS (MINIMAL LIST)
-    # -------------------------------------------------------------------------
-    if st.session_state["recent_inspections"]:
-        st.markdown("<hr style='margin: 1.8rem 0 1.0rem 0; border: none; border-bottom: 1px solid var(--border);' />", unsafe_allow_html=True)
-        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>RECENT INSPECTIONS (SESSION)</div>")
-        
-        hist_rows = []
-        for item in st.session_state["recent_inspections"][:4]:
-            badge_color = "var(--danger)" if item["status"] == "DEFECTIVE" else "var(--success)"
-            hist_rows.append(
-                f"<div style='display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.80rem;'>"
-                f"<span><span style='font-weight:600; color:var(--text-primary);'>#{item['id']}</span> &nbsp; {item['category'].title()} &nbsp;•&nbsp; <code style='font-size:0.75rem; color:var(--text-secondary);'>{item['filename'][:20]}</code></span>"
-                f"<span style='color:{badge_color}; font-weight:700;'>{item['status']}</span>"
-                f"<span style='color:var(--text-secondary);'>Score: {item['score']:.4f}</span>"
-                f"<span style='color:var(--text-muted);'>Latency: {item['time_s']:.2f}s</span>"
-                f"</div>"
-            )
-        render_html(f"<div style='background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 16px;'>{''.join(hist_rows)}</div>")
+        # -------------------------------------------------------------------------
+        # RECENT INSPECTIONS (MINIMAL LIST - UPLOAD VIEW)
+        # -------------------------------------------------------------------------
+        if st.session_state["recent_inspections"]:
+            st.markdown("<hr style='margin: 1.8rem 0 1.0rem 0; border: none; border-bottom: 1px solid var(--border);' />", unsafe_allow_html=True)
+            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>RECENT INSPECTIONS (SESSION)</div>")
+            
+            hist_rows = []
+            for item in st.session_state["recent_inspections"][:4]:
+                badge_color = "var(--danger)" if item["status"] == "DEFECTIVE" else "var(--success)"
+                hist_rows.append(
+                    f"<div style='display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.80rem;'>"
+                    f"<span><span style='font-weight:600; color:var(--text-primary);'>#{item['id']}</span> &nbsp; {item['category'].title()} &nbsp;•&nbsp; <code style='font-size:0.75rem; color:var(--text-secondary);'>{item['filename'][:20]}</code></span>"
+                    f"<span style='color:{badge_color}; font-weight:700;'>{item['status']}</span>"
+                    f"<span style='color:var(--text-secondary);'>Score: {item['score']:.4f}</span>"
+                    f"<span style='color:var(--text-muted);'>Latency: {item['time_s']:.2f}s</span>"
+                    f"</div>"
+                )
+            render_html(f"<div style='background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 16px;'>{''.join(hist_rows)}</div>")
 
 
 # =============================================================================
-# PAGE 3: MODELS PAGE (MINIMALIST ARCHITECTURE & METHODOLOGY)
+# PAGE 3: MODELS PAGE (SYSTEM ARCHITECTURE & DEDICATED MODEL DOCUMENTATION)
 # =============================================================================
 elif st.session_state["nav_page"] == "Models":
-    render_html("""
-    <div class="hero-eyebrow">SYSTEM ARCHITECTURE</div>
-    <h1 style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 12px 0;">PatchCore v2.3 Architecture</h1>
-    <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 680px; line-height: 1.5; margin-bottom: 24px;">
-        VisionInspect operates on an unsupervised memory bank density paradigm. Feature representations are extracted from deep ResNet-18 layers, sub-sampled via greedy coreset selection, and tested without training on defect images.
-    </p>
-    """)
+    active_doc_model = st.session_state.get("selected_model_doc")
 
-    m_col1, m_col2 = st.columns(2, gap="large")
+    # Check query params for model if not in session_state
+    if not active_doc_model:
+        param_model = st.query_params.get("model") or st.query_params.get("category")
+        if param_model and param_model.lower() in CATEGORY_DOCS:
+            active_doc_model = param_model.lower()
+            st.session_state["selected_model_doc"] = active_doc_model
 
-    with m_col1:
+    if active_doc_model and active_doc_model in CATEGORY_DOCS:
+        # Dynamic Dedicated Model Documentation Page
+        def _on_all_models():
+            st.session_state["selected_model_doc"] = None
+            if "model" in st.query_params:
+                del st.query_params["model"]
+            if "category" in st.query_params:
+                del st.query_params["category"]
+
+        def _on_select_model(cat_id: str):
+            st.session_state["selected_model_doc"] = cat_id
+            st.query_params["model"] = cat_id
+
+        def _on_try_inspect(cat_id: str):
+            st.session_state["selected_model_doc"] = None
+            if "model" in st.query_params:
+                del st.query_params["model"]
+            if "category" in st.query_params:
+                del st.query_params["category"]
+            purge_inspection(new_category=cat_id)
+            st.session_state["nav_page"] = "Inspect"
+
+        render_model_documentation_page(
+            category_id=active_doc_model,
+            on_all_models=_on_all_models,
+            on_select_model=_on_select_model,
+            on_try_inspect=_on_try_inspect,
+        )
+    else:
+        # High-level Architecture Overview & Production Models Catalog
         render_html("""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; height: 100%;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">CORE PIPELINE STAGES</div>
-            <div style="font-size: 0.82rem; color: var(--text-primary); line-height: 1.8;">
-                <b style="color: var(--text-primary);">1. Multi-Scale Feature Extraction</b><br>
-                ResNet-18 Layers 1, 2, and 3 are extracted and spatially bilinearly interpolated onto a uniform 64×64 grid, producing 448-dimensional localized patch descriptors.<br><br>
-                <b style="color: var(--text-primary);">2. Coreset Memory Bank Subsampling</b><br>
-                Greedy minimax coreset selection retains 10% of nominal feature vectors while maintaining complete coverage of the normal representation manifold.<br><br>
-                <b style="color: var(--text-primary);">3. Nearest-Neighbor Anomaly Scoring</b><br>
-                Test image patches are scored via exact Euclidean nearest-neighbor distance against the category's nominal memory bank.<br><br>
-                <b style="color: var(--text-primary);">4. Dual-Gated Decision Rule</b><br>
-                A component is defective if and only if its anomaly score exceeds T_image AND a morphological connected component exceeds min_area.
+        <div class="hero-eyebrow">SYSTEM ARCHITECTURE & PRODUCTION MODELS</div>
+        <h1 style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 12px 0;">PatchCore v2.3 Architecture</h1>
+        <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 780px; line-height: 1.5; margin-bottom: 24px;">
+            VisionInspect operates on an unsupervised memory bank density paradigm. Feature representations are extracted from deep ResNet-18 layers, sub-sampled via greedy coreset selection, and tested without training on defect images. Select any production model below to inspect its dedicated technical documentation and real implementation code.
+        </p>
+        """)
+
+        m_col1, m_col2 = st.columns(2, gap="large")
+
+        with m_col1:
+            render_html("""
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; height: 100%;">
+                <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">CORE PIPELINE STAGES</div>
+                <div style="font-size: 0.82rem; color: var(--text-primary); line-height: 1.8;">
+                    <b style="color: var(--text-primary);">1. Multi-Scale Feature Extraction</b><br>
+                    ResNet-18 Layers 1, 2, and 3 are extracted and spatially bilinearly interpolated onto a uniform 64×64 grid, producing 448-dimensional localized patch descriptors.<br><br>
+                    <b style="color: var(--text-primary);">2. Coreset Memory Bank Subsampling</b><br>
+                    Greedy minimax coreset selection retains 10% of nominal feature vectors while maintaining complete coverage of the normal representation manifold.<br><br>
+                    <b style="color: var(--text-primary);">3. Nearest-Neighbor Anomaly Scoring</b><br>
+                    Test image patches are scored via exact Euclidean nearest-neighbor distance against the category's nominal memory bank.<br><br>
+                    <b style="color: var(--text-primary);">4. Dual-Gated Decision Rule</b><br>
+                    A component is defective if and only if its anomaly score exceeds T_image AND a morphological connected component exceeds min_area.
+                </div>
             </div>
+            """)
+
+        with m_col2:
+            render_html("""
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; height: 100%;">
+                <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">VERIFIED CATEGORY THRESHOLDS (config.yaml)</div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.80rem; margin-top: 8px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border); text-align: left; color: var(--text-secondary);">
+                            <th style="padding: 6px 0;">Category</th>
+                            <th>T_image</th>
+                            <th>T_pixel</th>
+                            <th>Spatial Prior</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Bottle</td>
+                            <td>1.5000</td>
+                            <td>1.4000</td>
+                            <td>Active (p75/mean)</td>
+                            <td style="color: var(--success); font-weight: 700;">● LOCKED</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Leather</td>
+                            <td>2.9000</td>
+                            <td>1.7100</td>
+                            <td>Disabled (Texture)</td>
+                            <td style="color: var(--success); font-weight: 700;">● LOCKED</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Transistor</td>
+                            <td>3.5250</td>
+                            <td>2.8220</td>
+                            <td>Presence Gate</td>
+                            <td style="color: var(--success); font-weight: 700;">● LOCKED</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Zipper</td>
+                            <td>1.4700</td>
+                            <td>0.9100</td>
+                            <td>Active (mean)</td>
+                            <td style="color: var(--success); font-weight: 700;">● LOCKED</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Screw</td>
+                            <td>2.8000</td>
+                            <td>2.4000</td>
+                            <td>Disabled (None)</td>
+                            <td style="color: var(--success); font-weight: 700;">● LOCKED</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            """)
+
+        render_html("<hr style='margin: 28px 0 20px 0; border: none; border-bottom: 1px solid var(--border);' />")
+
+        render_html("""
+        <div style="margin-bottom: 16px;">
+            <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; color: var(--accent-blue); text-transform: uppercase;">EXPLORE DEDICATED MODEL DOCUMENTATION</div>
+            <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 2px 0 6px 0;">Production Model Implementations</h2>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 0;">
+                Click any model to inspect its detailed architecture, scanning pipeline, MVTec defect taxonomy, verified hyperparameters, and real repository source code.
+            </p>
         </div>
         """)
 
-    with m_col2:
-        render_html("""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; height: 100%;">
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">CATEGORY MODELS & THRESHOLDS</div>
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.80rem; margin-top: 8px;">
-                <thead>
-                    <tr style="border-bottom: 1px solid var(--border); text-align: left; color: var(--text-secondary);">
-                        <th style="padding: 6px 0;">Category</th>
-                        <th>T_image</th>
-                        <th>T_pixel</th>
-                        <th>Spatial Prior</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Bottle</td>
-                        <td>1.50</td>
-                        <td>1.40</td>
-                        <td>Active (p75/mean)</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Leather</td>
-                        <td>2.20</td>
-                        <td>2.71</td>
-                        <td>Disabled (Texture)</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Transistor</td>
-                        <td>3.525</td>
-                        <td>2.822</td>
-                        <td>Presence Gate</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Zipper</td>
-                        <td>1.47</td>
-                        <td>0.91</td>
-                        <td>Active (mean)</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; font-weight: 600; color: var(--text-primary);">Screw</td>
-                        <td>2.28</td>
-                        <td>2.00</td>
-                        <td>Active (mean)</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        """)
+        # 5 Interactive Category Documentation Cards
+        model_card_cols = st.columns(5, gap="medium")
+        for c_idx, cat_id in enumerate(["bottle", "leather", "transistor", "zipper", "screw"]):
+            cat_info = CATEGORIES[cat_id]
+            doc_info = CATEGORY_DOCS[cat_id]
+            thumb_b64 = get_thumbnail_b64(cat_info["golden_sample"])
+
+            with model_card_cols[c_idx]:
+                render_html(f"""
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 380px;">
+                    <div>
+                        <div style="text-align: center; margin-bottom: 10px;">
+                            <img src="data:image/jpeg;base64,{thumb_b64}" alt="{cat_info['name']}" style="width: 100%; max-width: 130px; height: 110px; object-fit: contain; border-radius: 4px; background: var(--surface-subtle); border: 1px solid var(--border);" />
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">{cat_info['name']}</span>
+                            <span style="font-size: 0.68rem; font-weight: 700; color: var(--success); background: var(--surface-subtle); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border);">● LOCKED</span>
+                        </div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 8px;">
+                            {cat_info['label']}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+                            {doc_info['subtitle']}
+                        </div>
+                        <div style="border-top: 1px solid var(--border); padding-top: 8px; font-size: 0.72rem; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">T_image:</span>
+                                <span style="font-weight: 700; color: var(--text-primary);">{doc_info['image_threshold']:.4f}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">T_pixel:</span>
+                                <span style="font-weight: 700; color: var(--text-primary);">{doc_info['pixel_threshold']:.4f}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Defects:</span>
+                                <span style="font-weight: 600; color: var(--text-primary);">{len(doc_info['defects'])} types</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """)
+
+                if st.button(f"Explore {cat_info['name']} →", key=f"btn_explore_card_{cat_id}", type="primary", use_container_width=True):
+                    st.session_state["selected_model_doc"] = cat_id
+                    st.query_params["model"] = cat_id
+                    st.rerun()
 
 
 # =============================================================================
@@ -2975,3 +3515,9 @@ elif st.session_state["nav_page"] == "About":
         
         This prevents isolated sensor noise or dust particles from generating false alarms.
         """)
+
+# =============================================================================
+# FOOTER (MINIMALIST REFERENCE-STYLE EDITORIAL LIGHT SECTION)
+# =============================================================================
+render_footer()
+

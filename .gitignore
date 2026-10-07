@@ -26,6 +26,7 @@ __pycache__/
 # Environment, Secrets, and Credentials
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 
@@ -45,11 +46,16 @@ temp_pipeline.py
 test_env.py
 test_env.ipynb
 
-# Model Weights & Memory Banks (Exceeds GitHub 100MB limit; keep local & reproducible via scripts)
+# Model Weights & Memory Banks (Production patchcore_v23 tracked via Git LFS / Git)
 *.pt
 *.pth
 !models/**/.gitkeep
 !models/category_prototypes.pt
+!models/*/patchcore_v23/*.pt
+!models/*/patchcore_v23/*.json
+
+# Standalone Test Samples (allows running tests/demo without 5GB full dataset)
+!assets/test_samples/**
 
 # OS & Editor Specific
 .DS_Store
