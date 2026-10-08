@@ -128,9 +128,15 @@ class PatchCoreModelV22:
         patch_feats, (Hp, Wp) = self.feature_extractor(img_tensor)
         test_patches = patch_feats.squeeze(0)
         
-        # Chunked cdist for memory efficiency
-        dists = torch.cdist(test_patches, self.memory_bank, p=2.0)
-        min_dists, _ = torch.min(dists, dim=1)
+        # Chunked cdist for memory efficiency (prevents allocating 2+ GB distance matrix)
+        chunk_size = 512
+        min_dists_list = []
+        for i in range(0, test_patches.shape[0], chunk_size):
+            chunk = test_patches[i:i+chunk_size]
+            d = torch.cdist(chunk, self.memory_bank, p=2.0)
+            m, _ = torch.min(d, dim=1)
+            min_dists_list.append(m)
+        min_dists = torch.cat(min_dists_list, dim=0)
         
         amap_patch = min_dists.reshape(1, 1, Hp, Wp)
         amap_resized = F.interpolate(amap_patch, size=(orig_H, orig_W), mode='bilinear', align_corners=False)

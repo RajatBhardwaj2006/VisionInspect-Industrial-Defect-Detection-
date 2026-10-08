@@ -2337,15 +2337,29 @@ elif st.session_state["nav_page"] == "Inspect":
             fname = item["filename"]
             scan_bytes = item["bytes"]
             try:
-                res = requests.post(
-                    f"{st.session_state['backend_url']}/predict",
-                    data={"category": active_cat, "return_visualizations": "true"},
-                    files={"file": (fname, scan_bytes, "image/png")},
-                    timeout=30
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    
+                data = None
+                try:
+                    res = requests.post(
+                        f"{st.session_state['backend_url']}/predict",
+                        data={"category": active_cat, "return_visualizations": "true"},
+                        files={"file": (fname, scan_bytes, "image/png")},
+                        timeout=30
+                    )
+                    if res.status_code == 200:
+                        data = res.json()
+                    else:
+                        errors.append(f"{fname}: {res.status_code} - {res.text}")
+                except Exception as net_err:
+                    # In-process fallback for single-process zero-cost hosting (e.g. Streamlit Cloud)
+                    try:
+                        from app.backend import _process_single_image, get_detector, get_compatibility_checker
+                        det = get_detector(active_cat)
+                        chk = get_compatibility_checker()
+                        data = _process_single_image(scan_bytes, fname, active_cat, det, chk, True)
+                    except Exception as inproc_err:
+                        errors.append(f"{fname}: {inproc_err}")
+
+                if data is not None:
                     # Check for category compatibility mismatch
                     comp = data.get("category_compatibility") or data.get("compatibility") or {}
                     if comp.get("is_mismatch"):
@@ -2372,8 +2386,6 @@ elif st.session_state["nav_page"] == "Inspect":
                         "regions": data.get("num_defects", 0),
                         "time_s": data.get("inference_time_s", 1.5)
                     })
-                else:
-                    errors.append(f"{fname}: {res.status_code} - {res.text}")
             except Exception as e:
                 errors.append(f"{fname}: {e}")
 

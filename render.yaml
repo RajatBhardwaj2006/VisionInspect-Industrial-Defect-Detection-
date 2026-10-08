@@ -2,7 +2,7 @@ services:
   - type: web
     name: visioninspect
     runtime: docker
-    plan: standard
+    plan: free
     region: oregon
     healthCheckPath: /health
     autoDeploy: true

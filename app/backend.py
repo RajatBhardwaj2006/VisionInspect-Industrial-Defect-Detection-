@@ -173,6 +173,15 @@ def get_detector(category: str) -> PatchCoreDetectorV23:
         )
         
     if category not in DETECTOR_CACHE:
+        # Single-model active cache: Purge previous models to maintain lowest memory footprint
+        if DETECTOR_CACHE:
+            logger.info("Purging previously active model from memory to conserve system RAM...")
+            DETECTOR_CACHE.clear()
+            import gc
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
         logger.info(f"Loading model for category '{category}' onto {DEVICE}...")
         DETECTOR_CACHE[category] = PatchCoreDetectorV23(category=category, device=DEVICE)
         
@@ -181,7 +190,12 @@ def get_detector(category: str) -> PatchCoreDetectorV23:
 def get_compatibility_checker() -> CategoryCompatibilityChecker:
     global COMPATIBILITY_CHECKER
     if COMPATIBILITY_CHECKER is None:
-        COMPATIBILITY_CHECKER = CategoryCompatibilityChecker(device=DEVICE)
+        # Reuse existing feature extractor if an active detector is already loaded
+        shared_fe = None
+        if DETECTOR_CACHE:
+            active_det = next(iter(DETECTOR_CACHE.values()))
+            shared_fe = getattr(active_det.model, "feature_extractor", None)
+        COMPATIBILITY_CHECKER = CategoryCompatibilityChecker(device=DEVICE, feature_extractor=shared_fe)
     return COMPATIBILITY_CHECKER
 
 @app.get("/")

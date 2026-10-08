@@ -95,32 +95,46 @@ PDF inspection certificates are generated in-memory using **ReportLab Platypus**
 
 ---
 
-## 7. Render Cloud Deployment
+## 7. Zero-Cost ($0 / ₹0) Cloud Deployment Options
 
-VisionInspect includes a unified multi-stage Dockerfile and Blueprint configuration for **Render**:
+VisionInspect is engineered to run at zero hosting cost without requiring a credit card or paid compute plan.
 
-### Deployment Architecture
-- **Web Service Runtime:** Docker
-- **Public Port:** `$PORT` (dynamically assigned by Render, typically `10000`)
-- **Gateway:** Nginx reverse proxy routes public traffic:
-  - `GET /health` & `POST /predict` $\rightarrow$ FastAPI REST API (`127.0.0.1:8000`)
-  - `GET /` & WebSockets $\rightarrow$ Streamlit Web UI (`127.0.0.1:8501`)
-- **Health Check Path:** `/health`
-- **Blueprint:** `render.yaml`
+### Architecture Memory Analysis
+- **Base PyTorch + FastAPI runtime:** ~273 MB
+- **ResNet-18 Backbone:** ~45 MB
+- **PatchCore v2.3 Memory Bank per Category:** ~150 MB to 235 MB
+- **Single-Model Active Footprint:** ~550 MB to 640 MB (with lazy loading and chunked cdist)
+- **All 5 Models Simultaneously:** ~1,290 MB (~1.3 GB)
 
-### How to Deploy on Render
-1. In the **Render Dashboard**, click **New +** $\rightarrow$ **Blueprint** (or **Web Service**).
+---
+
+### Option A: Render Cloud (Free Tier - 512 MB)
+- **Cost:** $0.00 / ₹0 (No credit card required)
+- **Blueprint:** `render.yaml` (`plan: free`)
+- **Note:** Render's free tier imposes a strict 512 MB RAM ceiling. Because PyTorch + PatchCore memory bank for screw requires ~550–640 MB during inference, heavy inference may encounter memory pressure on Render Free.
+
+#### Deploying on Render (Free Plan):
+1. In the **Render Dashboard**, click **New +** $\rightarrow$ **Blueprint**.
 2. Connect your GitHub repository:
    `https://github.com/RajatBhardwaj2006/VisionInspect-Industrial-Defect-Detection-.git`
 3. Select branch: `main`.
-4. If deploying as a Web Service manually:
-   - **Environment:** Docker
-   - **Plan:** Standard (or Starter with lazy model caching)
-   - **Health Check Path:** `/health`
-   - **Environment Variables:**
-     - `VISIONINSPECT_ENV`: `production`
-     - `VISIONINSPECT_DEVICE`: `cpu`
-     - `VISIONINSPECT_BACKEND_URL`: `http://127.0.0.1:8000`
-     - `KMP_DUPLICATE_LIB_OK`: `TRUE`
-5. Click **Deploy**. Render builds the Docker image, initializes the models, verifies `/health`, and serves the live HTTPS website.
+4. Render detects `render.yaml` with `plan: free` and launches at $0 with zero billing prompts.
+
+---
+
+### Option B: Streamlit Community Cloud (Recommended for $0 Hosting - 1.0 GB RAM)
+- **Cost:** $0.00 / ₹0 (Free forever for GitHub repositories, zero credit card)
+- **Memory Allocation:** ~1.0 GB RAM (fits single-model lazy loaded PatchCore easily)
+- **Public URL:** `https://<your-app>.streamlit.app`
+- **Architecture:** Streamlit native runner with automatic in-process inference fallback (`app/app.py` $\rightarrow$ `app/backend.py`).
+
+#### Deploying to Streamlit Community Cloud in 60 Seconds:
+1. Go to [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
+2. Click **Create app**.
+3. Select:
+   - **Repository:** `RajatBhardwaj2006/VisionInspect-Industrial-Defect-Detection-`
+   - **Branch:** `main`
+   - **Main file path:** `app/app.py`
+4. Click **Deploy!**
+5. Streamlit Community Cloud automatically installs dependencies, serves the full industrial UI, and exposes a public HTTPS URL.
 

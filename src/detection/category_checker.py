@@ -30,11 +30,12 @@ class CategoryCompatibilityChecker:
         self,
         device: Optional[torch.device] = None,
         prototype_cache_path: Optional[str] = None,
-        margin_threshold: float = 0.35
+        margin_threshold: float = 0.35,
+        feature_extractor: Optional[FeatureExtractorV22] = None
     ):
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.margin_threshold = margin_threshold
-        self.feature_extractor = FeatureExtractorV22(self.device)
+        self.feature_extractor = feature_extractor or FeatureExtractorV22(self.device)
         self.prototypes: Dict[str, torch.Tensor] = {}
         
         self.cache_path = Path(prototype_cache_path or "models/category_prototypes.pt")
