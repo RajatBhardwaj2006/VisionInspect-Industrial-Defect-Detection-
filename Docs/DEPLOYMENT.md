@@ -92,3 +92,35 @@ PDF inspection certificates are generated in-memory using **ReportLab Platypus**
 - Dependency: `reportlab>=4.0.0`
 - Zero temporary disk writes: Reports are compiled directly to `io.BytesIO` streams and served via base64 or Streamlit download buttons.
 - No external PDF rendering engines (e.g. wkhtmltopdf) are required.
+
+---
+
+## 7. Render Cloud Deployment
+
+VisionInspect includes a unified multi-stage Dockerfile and Blueprint configuration for **Render**:
+
+### Deployment Architecture
+- **Web Service Runtime:** Docker
+- **Public Port:** `$PORT` (dynamically assigned by Render, typically `10000`)
+- **Gateway:** Nginx reverse proxy routes public traffic:
+  - `GET /health` & `POST /predict` $\rightarrow$ FastAPI REST API (`127.0.0.1:8000`)
+  - `GET /` & WebSockets $\rightarrow$ Streamlit Web UI (`127.0.0.1:8501`)
+- **Health Check Path:** `/health`
+- **Blueprint:** `render.yaml`
+
+### How to Deploy on Render
+1. In the **Render Dashboard**, click **New +** $\rightarrow$ **Blueprint** (or **Web Service**).
+2. Connect your GitHub repository:
+   `https://github.com/RajatBhardwaj2006/VisionInspect-Industrial-Defect-Detection-.git`
+3. Select branch: `main`.
+4. If deploying as a Web Service manually:
+   - **Environment:** Docker
+   - **Plan:** Standard (or Starter with lazy model caching)
+   - **Health Check Path:** `/health`
+   - **Environment Variables:**
+     - `VISIONINSPECT_ENV`: `production`
+     - `VISIONINSPECT_DEVICE`: `cpu`
+     - `VISIONINSPECT_BACKEND_URL`: `http://127.0.0.1:8000`
+     - `KMP_DUPLICATE_LIB_OK`: `TRUE`
+5. Click **Deploy**. Render builds the Docker image, initializes the models, verifies `/health`, and serves the live HTTPS website.
+

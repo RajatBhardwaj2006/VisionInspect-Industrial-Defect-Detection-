@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: visioninspect
+    runtime: docker
+    plan: standard
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: VISIONINSPECT_ENV
+        value: production
+      - key: VISIONINSPECT_DEVICE
+        value: cpu
+      - key: VISIONINSPECT_BACKEND_URL
+        value: http://127.0.0.1:8000
+      - key: KMP_DUPLICATE_LIB_OK
+        value: "TRUE"
+      - key: PORT
+        value: "10000"

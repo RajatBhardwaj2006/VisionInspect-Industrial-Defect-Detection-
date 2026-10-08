@@ -3,3 +3,4 @@
 # Tracks large production PatchCore memory bank tensors (>100MB)
 # ====================================================================
 models/**/patchcore_v23/memory_bank.pt filter=lfs diff=lfs merge=lfs -text
+*.sh text eol=lf
