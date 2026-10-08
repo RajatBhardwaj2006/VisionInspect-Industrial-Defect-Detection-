@@ -2338,19 +2338,25 @@ elif st.session_state["nav_page"] == "Inspect":
             scan_bytes = item["bytes"]
             try:
                 data = None
-                try:
-                    res = requests.post(
-                        f"{st.session_state['backend_url']}/predict",
-                        data={"category": active_cat, "return_visualizations": "true"},
-                        files={"file": (fname, scan_bytes, "image/png")},
-                        timeout=30
-                    )
-                    if res.status_code == 200:
-                        data = res.json()
-                    else:
-                        errors.append(f"{fname}: {res.status_code} - {res.text}")
-                except Exception as net_err:
-                    # In-process fallback for single-process zero-cost hosting (e.g. Streamlit Cloud)
+                # 1. Attempt REST backend if configured and not previously marked in-process
+                if not st.session_state.get("use_inprocess", False) and st.session_state.get("backend_url"):
+                    try:
+                        res = requests.post(
+                            f"{st.session_state['backend_url']}/predict",
+                            data={"category": active_cat, "return_visualizations": "true"},
+                            files={"file": (fname, scan_bytes, "image/png")},
+                            timeout=10
+                        )
+                        if res.status_code == 200:
+                            data = res.json()
+                        else:
+                            errors.append(f"{fname}: {res.status_code} - {res.text}")
+                    except Exception as net_err:
+                        # REST backend unreachable: permanently switch session to in-process engine
+                        st.session_state["use_inprocess"] = True
+
+                # 2. Direct in-process inference engine (zero-overhead single process for Streamlit Cloud)
+                if data is None and not errors:
                     try:
                         from app.backend import _process_single_image, get_detector, get_compatibility_checker
                         det = get_detector(active_cat)
