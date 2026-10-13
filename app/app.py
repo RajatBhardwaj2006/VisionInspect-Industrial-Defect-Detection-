@@ -970,10 +970,10 @@ render_html("""
         border: 1px solid var(--border-strong) !important;
         background-color: var(--surface) !important;
         color: var(--text-primary) !important;
-        padding: 6px 16px !important;
+        padding: 6px 18px !important;
         font-weight: 500 !important;
-        font-size: 0.84rem !important;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        font-size: 0.88rem !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
         transition: all 0.15s ease !important;
         cursor: pointer !important;
     }
@@ -982,17 +982,48 @@ render_html("""
         background-color: var(--surface-subtle) !important;
         color: var(--text-primary) !important;
     }
-    [data-testid="stPills"] button[aria-selected="true"] {
-        background-color: var(--dark) !important;
-        color: var(--btn-primary-text) !important;
-        border-color: var(--dark) !important;
-        font-weight: 600 !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+    [data-testid="stPills"] button:focus,
+    [data-testid="stPills"] button:focus-visible {
+        outline: 2px solid var(--text-secondary) !important;
+        outline-offset: 2px !important;
     }
     [data-testid="stPills"] button * {
         color: inherit !important;
         font-size: inherit !important;
         font-weight: inherit !important;
+    }
+    /* Selected / active pill state */
+    [data-testid="stPills"] button[aria-selected="true"],
+    [data-testid="stPills"] button[aria-pressed="true"],
+    [data-testid="stPills"] button[data-selected="true"] {
+        background-color: var(--btn-primary-bg) !important;
+        color: var(--btn-primary-text) !important;
+        border-color: var(--btn-primary-bg) !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+    }
+    [data-testid="stPills"] button[aria-selected="true"]:hover,
+    [data-testid="stPills"] button[aria-pressed="true"]:hover,
+    [data-testid="stPills"] button[data-selected="true"]:hover {
+        background-color: var(--btn-primary-hover) !important;
+        color: var(--btn-primary-text) !important;
+        border-color: var(--btn-primary-hover) !important;
+    }
+    /* High specificity inner elements override for active pill to defeat global .stMarkdown p */
+    [data-testid="stPills"] button[aria-selected="true"] *,
+    [data-testid="stPills"] button[aria-selected="true"] p,
+    [data-testid="stPills"] button[aria-selected="true"] span,
+    [data-testid="stPills"] button[aria-selected="true"] div,
+    [data-testid="stPills"] button[aria-pressed="true"] *,
+    [data-testid="stPills"] button[aria-pressed="true"] p,
+    [data-testid="stPills"] button[aria-pressed="true"] span,
+    [data-testid="stPills"] button[aria-pressed="true"] div,
+    [data-testid="stPills"] button[data-selected="true"] *,
+    [data-testid="stPills"] button[data-selected="true"] p,
+    [data-testid="stPills"] button[data-selected="true"] span,
+    [data-testid="stPills"] button[data-selected="true"] div {
+        color: var(--btn-primary-text) !important;
+        font-weight: 700 !important;
     }
 
     /* Clean Crisp Selectbox & Popover Dropdown */
@@ -1078,23 +1109,43 @@ render_html("""
     div[data-testid="stExpander"] {
         background-color: var(--surface) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
     }
     div[data-testid="stExpander"] details {
         background-color: var(--surface) !important;
+        border-radius: 8px !important;
     }
     div[data-testid="stExpander"] summary {
+        background-color: var(--surface) !important;
         color: var(--text-primary) !important;
+        padding: 12px 18px !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        font-size: 1.05rem !important;
+        transition: background-color 0.15s ease !important;
     }
     div[data-testid="stExpander"] summary:hover {
+        background-color: var(--surface-subtle) !important;
         color: var(--text-primary) !important;
+    }
+    div[data-testid="stExpander"] summary * {
+        color: var(--text-primary) !important;
+        font-weight: 700 !important;
+        font-size: inherit !important;
     }
     div[data-testid="stExpander"] summary svg {
         fill: var(--text-primary) !important;
+        stroke: var(--text-primary) !important;
     }
     div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+        background-color: var(--surface) !important;
         border-top: 1px solid var(--border) !important;
-        color: var(--text-secondary) !important;
+        color: var(--text-primary) !important;
+        padding: 16px 20px !important;
+    }
+    div[data-testid="stExpander"] [data-testid="stExpanderDetails"] * {
+        color: inherit;
     }
     table, th, td {
         border-color: var(--border) !important;
@@ -1804,43 +1855,56 @@ render_html("""
         background: linear-gradient(to right, #000080 0%, #00FFFF 35%, #FFFF00 70%, #FF0000 100%);
     }
 
-    /* Metric Card Boxes & Hover Info Tooltips */
+    /* Metric Card Boxes & 2x2 Grid Layout */
+    .metrics-grid-2x2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 10px;
+    }
+    @media (max-width: 768px) {
+        .metrics-grid-2x2 {
+            grid-template-columns: 1fr;
+        }
+    }
     .metric-card-box {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 12px 18px;
+        padding: 16px 20px;
         margin-bottom: 8px;
         position: relative;
+        box-sizing: border-box;
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .metric-card-box:hover {
         border-color: var(--border-strong);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
     .metric-card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
     }
     .metric-card-title {
-        font-size: 0.88rem;
+        font-size: 1.05rem;
         font-weight: 600;
         color: var(--text-primary);
         letter-spacing: -0.01em;
     }
     .metric-card-num {
-        font-size: 1.05rem;
+        font-size: 1.55rem;
         font-weight: 700;
         color: var(--text-primary);
         margin-left: 6px;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     .metric-card-desc {
-        font-size: 0.77rem;
+        font-size: 0.90rem;
         color: var(--text-secondary);
-        line-height: 1.4;
+        line-height: 1.45;
+        margin-top: 4px;
     }
     .info-tooltip-wrapper {
         position: relative;
@@ -1852,13 +1916,13 @@ render_html("""
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 19px;
-        height: 19px;
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
         background: var(--surface-subtle);
         border: 1px solid var(--border);
         color: var(--text-secondary);
-        font-size: 0.72rem;
+        font-size: 0.80rem;
         font-weight: 700;
         line-height: 1;
         transition: all 0.15s ease;
@@ -1874,16 +1938,16 @@ render_html("""
         opacity: 0;
         position: absolute;
         right: 0;
-        top: 26px;
-        width: 300px;
-        background: #18181B;
-        color: #F4F4F5;
-        padding: 12px 14px;
+        top: 28px;
+        width: 320px;
+        background: var(--surface-subtle);
+        color: var(--text-primary);
+        padding: 14px 16px;
         border-radius: 8px;
-        border: 1px solid #3F3F46;
+        border: 1px solid var(--border-strong);
         box-shadow: 0 12px 28px rgba(0, 0, 0, 0.40);
-        font-size: 0.74rem;
-        line-height: 1.45;
+        font-size: 0.85rem;
+        line-height: 1.5;
         z-index: 99999;
         pointer-events: none;
         transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
@@ -1920,14 +1984,14 @@ render_html("""
         box-shadow: inset 0 0 3px rgba(0,0,0,0.3);
     }
     .vertical-scale-tag {
-        font-size: 0.68rem;
+        font-size: 0.78rem;
         font-weight: 700;
         text-align: center;
         letter-spacing: 0.03em;
         line-height: 1.2;
     }
     .vertical-scale-val {
-        font-size: 0.65rem;
+        font-size: 0.75rem;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         color: var(--text-muted);
         text-align: center;
@@ -1947,22 +2011,22 @@ render_html("""
     .tech-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.80rem;
+        font-size: 0.92rem;
         margin: 10px 0;
     }
     .tech-table th {
         background: var(--surface-subtle);
-        color: var(--text-secondary);
-        font-weight: 600;
+        color: var(--text-primary);
+        font-weight: 700;
         text-transform: uppercase;
-        font-size: 0.68rem;
+        font-size: 0.85rem;
         letter-spacing: 0.05em;
-        padding: 8px 12px;
+        padding: 10px 14px;
         text-align: left;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 2px solid var(--border);
     }
     .tech-table td {
-        padding: 8px 12px;
+        padding: 10px 14px;
         border-bottom: 1px solid var(--border);
         color: var(--text-primary);
     }
@@ -1970,7 +2034,7 @@ render_html("""
         border-bottom: none;
     }
     .tech-table tr:hover td {
-        background: var(--surface-hover);
+        background: var(--surface-subtle);
     }
 
     /* Clickable VisionInspect Logo with 3D Icon */
@@ -2470,57 +2534,57 @@ elif st.session_state["nav_page"] == "Inspect":
         st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
 
         # 1. STATUS BANNER & 2. ONE-LINE PLAIN-ENGLISH EXPLANATION
-        render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.10em; color: var(--text-secondary); text-transform: uppercase;'>INSPECTION RESULT</div>")
+        render_html("<div style='font-size: 0.82rem; font-weight: 700; letter-spacing: 0.10em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px;'>INSPECTION RESULT</div>")
 
         if is_defective:
             summary_text = f"{n_defects} localized anomaly region(s) detected exceeding inspection criteria." if n_defects > 0 else "Anomaly score exceeded inspection criteria."
             render_html(f"""
-            <div style="font-size: 2.3rem; font-weight: 800; color: var(--danger); letter-spacing: -0.02em; line-height: 1.1;">VISUAL ANOMALY DETECTED</div>
-            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">{summary_text}</div>
+            <div style="font-size: 1.95rem; font-weight: 800; color: var(--danger); letter-spacing: -0.02em; line-height: 1.15;">VISUAL ANOMALY DETECTED</div>
+            <div style="font-size: 1.05rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.5;">{summary_text}</div>
             """)
         else:
             render_html("""
-            <div style="font-size: 2.3rem; font-weight: 800; color: var(--success); letter-spacing: -0.02em; line-height: 1.1;">NORMAL</div>
-            <div style="font-size: 0.92rem; color: var(--text-secondary); margin-top: 4px;">No significant visual deviation detected under current inspection criteria.</div>
+            <div style="font-size: 1.95rem; font-weight: 800; color: var(--success); letter-spacing: -0.02em; line-height: 1.15;">NORMAL</div>
+            <div style="font-size: 1.05rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.5;">No significant visual deviation detected under current inspection criteria.</div>
             """)
 
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
         # 3. THREE PANELS + VERTICAL HEATMAP SCALE (01 ORIGINAL | 02 ANOMALY MAP | 03 DETECTED REGION | 04 HEATMAP SCALE)
         v_col1, v_col2, v_col3, v_col4 = st.columns([1.0, 1.0, 1.0, 0.28], gap="medium")
 
         # 01 ORIGINAL IMAGE
         with v_col1:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>01 &nbsp; ORIGINAL IMAGE</div>")
+            render_html("<div style='font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>01 &nbsp; ORIGINAL IMAGE</div>")
             if orig_bytes:
                 st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
-            render_html(f"<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>File: {fname}</div>")
+            render_html(f"<div style='font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;'>File: {fname}</div>")
 
         # 02 ANOMALY HEATMAP
         with v_col2:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>02 &nbsp; ANOMALY HEATMAP</div>")
+            render_html("<div style='font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>02 &nbsp; ANOMALY HEATMAP</div>")
             hm_b64 = res.get("heatmap_base64")
             if hm_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(hm_b64))), use_container_width=True)
-                render_html("<div style='font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;'>Density Heatmap (Blue=Normal, Red=Deviation)</div>")
+                render_html("<div style='font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;'>Density Heatmap (Blue=Normal, Red=Deviation)</div>")
             else:
                 st.info("Anomaly map not available.")
 
         # 03 DETECTED REGION
         with v_col3:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>03 &nbsp; DETECTED REGION</div>")
+            render_html("<div style='font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px;'>03 &nbsp; DETECTED REGION</div>")
             vis_b64 = res.get("visualization_base64")
             if is_defective and vis_b64:
                 st.image(Image.open(io.BytesIO(base64.b64decode(vis_b64))), use_container_width=True)
-                render_html(f"<div style='font-size: 0.68rem; color: var(--danger); margin-top: 4px; font-weight: 600;'>{n_defects} visual anomaly region(s) detected</div>")
+                render_html(f"<div style='font-size: 0.85rem; color: var(--danger); margin-top: 6px; font-weight: 600;'>{n_defects} visual anomaly region(s) detected</div>")
             else:
                 if orig_bytes:
                     st.image(Image.open(io.BytesIO(orig_bytes)), use_container_width=True)
-                render_html("<div style='font-size: 0.68rem; color: var(--success); margin-top: 4px; font-weight: 600;'>✔ Defect-free — Zero visual anomaly regions detected</div>")
+                render_html("<div style='font-size: 0.85rem; color: var(--success); margin-top: 6px; font-weight: 600;'>✔ Defect-free — Zero visual anomaly regions detected</div>")
 
         # 04 HEATMAP SCALE
         with v_col4:
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px; text-align: center;'>HEATMAP SCALE</div>")
+            render_html("<div style='font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px; text-align: center;'>HEATMAP SCALE</div>")
             render_html(f"""
             <div class="vertical-scale-container">
                 <div>
@@ -2535,15 +2599,15 @@ elif st.session_state["nav_page"] == "Inspect":
                     <div class="vertical-scale-tag" style="color: #60A5FA;">Low</div>
                 </div>
             </div>
-            <div style="font-size: 0.62rem; color: var(--text-muted); text-align: center; margin-top: 4px; line-height: 1.2;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 6px; line-height: 1.25;">
                 Red = Defect<br>Blue = Normal
             </div>
             """)
 
-        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-        # 4. INSPECTION SCORES & METRICS (ONE COLUMN, EACH IN ITS OWN BOX WITH HOVER POPUP & REFERENCE BAR)
-        render_html("<div style='font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>INSPECTION SCORES & METRICS</div>")
+        # 4. INSPECTION SCORES & METRICS (ANOMALY SCORE ON TOP, 2x2 BALANCED GRID BELOW)
+        render_html("<div style='font-size: 1.30rem; font-weight: 800; letter-spacing: 0.04em; color: var(--text-primary); text-transform: uppercase; margin-bottom: 12px;'>4. INSPECTION SCORES & METRICS</div>")
 
         margin_sign = f"+{margin:.4f}" if margin > 0 else f"{margin:.4f}"
         margin_color = "var(--danger)" if margin > 0 else "var(--success)"
@@ -2572,13 +2636,13 @@ elif st.session_state["nav_page"] == "Inspect":
         time_seconds = res.get("inference_time_s", latency_ms / 1000.0)
 
         render_html(f"""
-        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
-            <!-- Box 1: Anomaly Score -->
+        <div style="margin-bottom: 20px;">
+            <!-- Box 1: Anomaly Score (Full Width on Top) -->
             <div class="metric-card-box">
                 <div class="metric-card-header">
                     <div>
                         <span class="metric-card-title">Anomaly Score : <span class="metric-card-num">{score:.4f}</span></span>
-                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {score_badge_style}">{score_status_text}</span>
+                        <span style="display: inline-block; margin-left: 10px; padding: 3px 10px; border-radius: 4px; font-size: 0.80rem; font-weight: 700; {score_badge_style}">{score_status_text}</span>
                     </div>
                     <div class="info-tooltip-wrapper">
                         <span class="info-icon">i</span>
@@ -2593,18 +2657,18 @@ elif st.session_state["nav_page"] == "Inspect":
                 </div>
 
                 <!-- Reference Range Bar -->
-                <div style="margin: 8px 0 6px 0;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-bottom: 3px; font-family: monospace;">
+                <div style="margin: 10px 0 8px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px; font-family: monospace;">
                         <span>0.0000</span>
                         <span style="color: var(--text-primary); font-weight: 600;">Threshold: {th:.4f}</span>
                         <span>{max_range:.4f}</span>
                     </div>
-                    <div style="position: relative; height: 8px; background: var(--surface-subtle); border-radius: 4px; overflow: visible; border: 1px solid var(--border);">
-                        <div style="position: absolute; left: 0; width: {th_pct:.1f}%; height: 100%; background: #22C55E; border-radius: 4px 0 0 4px; opacity: 0.85;"></div>
-                        <div style="position: absolute; left: {th_pct:.1f}%; right: 0; height: 100%; background: #EF4444; border-radius: 0 4px 4px 0; opacity: 0.85;"></div>
-                        <div style="position: absolute; left: calc({score_pct:.1f}% - 4px); top: -3px; width: 8px; height: 14px; background: {pin_color}; border: 1.5px solid #FFFFFF; border-radius: 2px; box-shadow: 0 1px 4px rgba(0,0,0,0.4);" title="Score: {score:.4f}"></div>
+                    <div style="position: relative; height: 10px; background: var(--surface-subtle); border-radius: 5px; overflow: visible; border: 1px solid var(--border);">
+                        <div style="position: absolute; left: 0; width: {th_pct:.1f}%; height: 100%; background: #22C55E; border-radius: 5px 0 0 5px; opacity: 0.85;"></div>
+                        <div style="position: absolute; left: {th_pct:.1f}%; right: 0; height: 100%; background: #EF4444; border-radius: 0 5px 5px 0; opacity: 0.85;"></div>
+                        <div style="position: absolute; left: calc({score_pct:.1f}% - 5px); top: -3px; width: 10px; height: 16px; background: {pin_color}; border: 2px solid #FFFFFF; border-radius: 2px; box-shadow: 0 1px 4px rgba(0,0,0,0.4);" title="Score: {score:.4f}"></div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--text-muted); margin-top: 4px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-muted); margin-top: 5px; font-weight: 500;">
                         <span>NORMAL / LOW DEVIATION</span>
                         <span>REVIEW / ANOMALOUS</span>
                     </div>
@@ -2613,88 +2677,107 @@ elif st.session_state["nav_page"] == "Inspect":
                 <div class="metric-card-desc">Measures overall visual deviation from nominal factory baseline samples.</div>
             </div>
 
-            <!-- Box 2: Inspection Threshold -->
-            <div class="metric-card-box">
-                <div class="metric-card-header">
+            <!-- 2x2 Balanced Grid for Primary Metric Cards -->
+            <div class="metrics-grid-2x2">
+                <!-- Row 1, Col 1: Box 2: Inspection Threshold -->
+                <div class="metric-card-box" style="margin-bottom: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
-                        <span class="metric-card-title">Inspection Threshold : <span class="metric-card-num">{th:.4f}</span></span>
-                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {th_badge_style}">{th_status_text}</span>
-                    </div>
-                    <div class="info-tooltip-wrapper">
-                        <span class="info-icon">i</span>
-                        <div class="info-tooltip-box">
-                            <strong style="color: #67E8F9;">Inspection Threshold Explained:</strong><br>
-                            • Statistically calibrated cutoff separating normal from defective components.<br>
-                            • Components with scores below this limit pass inspection.<br>
-                            • Scores above this limit trigger quality review.<br>
-                            • Calibrated with a 99.5% confidence bound to prevent false production stops.
+                        <div class="metric-card-header">
+                            <div>
+                                <span class="metric-card-title">Inspection Threshold : <span class="metric-card-num">{th:.4f}</span></span>
+                            </div>
+                            <div class="info-tooltip-wrapper">
+                                <span class="info-icon">i</span>
+                                <div class="info-tooltip-box">
+                                    <strong style="color: #67E8F9;">Inspection Threshold Explained:</strong><br>
+                                    • Statistically calibrated cutoff separating normal from defective components.<br>
+                                    • Components with scores below this limit pass inspection.<br>
+                                    • Scores above this limit trigger quality review.<br>
+                                    • Calibrated with a 99.5% confidence bound to prevent false production stops.
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin: 4px 0 8px 0;">
+                            <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.80rem; font-weight: 700; {th_badge_style}">{th_status_text}</span>
                         </div>
                     </div>
+                    <div class="metric-card-desc">Maximum allowable deviation before a component is flagged for quality review.</div>
                 </div>
-                <div class="metric-card-desc">Maximum allowable deviation before a component is flagged for quality review.</div>
-            </div>
 
-            <!-- Box 3: Decision Margin -->
-            <div class="metric-card-box">
-                <div class="metric-card-header">
+                <!-- Row 1, Col 2: Box 3: Decision Margin -->
+                <div class="metric-card-box" style="margin-bottom: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
-                        <span class="metric-card-title">Decision Margin : <span class="metric-card-num" style="color: {margin_color};">{margin_sign}</span></span>
-                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {margin_badge_style}">{margin_status_text}</span>
-                    </div>
-                    <div class="info-tooltip-wrapper">
-                        <span class="info-icon">i</span>
-                        <div class="info-tooltip-box">
-                            <strong style="color: #67E8F9;">Decision Margin Explained:</strong><br>
-                            • Calculated mathematically as: Anomaly Score minus Threshold.<br>
-                            • Negative (−) margin means component conforms safely within tolerance.<br>
-                            • Positive (+) margin indicates defect severity exceeds factory tolerance.<br>
-                            • Larger positive numbers indicate more severe structural or surface damage.
+                        <div class="metric-card-header">
+                            <div>
+                                <span class="metric-card-title">Decision Margin : <span class="metric-card-num" style="color: {margin_color};">{margin_sign}</span></span>
+                            </div>
+                            <div class="info-tooltip-wrapper">
+                                <span class="info-icon">i</span>
+                                <div class="info-tooltip-box">
+                                    <strong style="color: #67E8F9;">Decision Margin Explained:</strong><br>
+                                    • Calculated mathematically as: Anomaly Score minus Threshold.<br>
+                                    • Negative (−) margin means component conforms safely within tolerance.<br>
+                                    • Positive (+) margin indicates defect severity exceeds factory tolerance.<br>
+                                    • Larger positive numbers indicate more severe structural or surface damage.
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin: 4px 0 8px 0;">
+                            <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.80rem; font-weight: 700; {margin_badge_style}">{margin_status_text}</span>
                         </div>
                     </div>
+                    <div class="metric-card-desc">Distance between the component's anomaly score and the calibrated acceptance cutoff.</div>
                 </div>
-                <div class="metric-card-desc">Distance between the component's anomaly score and the calibrated acceptance cutoff.</div>
-            </div>
 
-            <!-- Box 4: Detected Anomaly Regions -->
-            <div class="metric-card-box">
-                <div class="metric-card-header">
+                <!-- Row 2, Col 1: Box 4: Detected Anomaly Regions -->
+                <div class="metric-card-box" style="margin-bottom: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
-                        <span class="metric-card-title">Detected Anomaly Regions : <span class="metric-card-num">{n_defects}</span></span>
-                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; {regions_badge_style}">{regions_status_text}</span>
-                    </div>
-                    <div class="info-tooltip-wrapper">
-                        <span class="info-icon">i</span>
-                        <div class="info-tooltip-box">
-                            <strong style="color: #67E8F9;">Detected Anomaly Regions Explained:</strong><br>
-                            • Groups contiguous anomalous pixels into distinct defect regions.<br>
-                            • Filters out single-pixel sensor noise and optical artifacts.<br>
-                            • Each cluster is assigned a bounding box, surface area, and severity rating.<br>
-                            • Defect-free components will always exhibit exactly 0 detected defect regions.
+                        <div class="metric-card-header">
+                            <div>
+                                <span class="metric-card-title">Detected Anomaly Regions : <span class="metric-card-num">{n_defects}</span></span>
+                            </div>
+                            <div class="info-tooltip-wrapper">
+                                <span class="info-icon">i</span>
+                                <div class="info-tooltip-box">
+                                    <strong style="color: #67E8F9;">Detected Anomaly Regions Explained:</strong><br>
+                                    • Groups contiguous anomalous pixels into distinct defect regions.<br>
+                                    • Filters out single-pixel sensor noise and optical artifacts.<br>
+                                    • Each cluster is assigned a bounding box, surface area, and severity rating.<br>
+                                    • Defect-free components will always exhibit exactly 0 detected defect regions.
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin: 4px 0 8px 0;">
+                            <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.80rem; font-weight: 700; {regions_badge_style}">{regions_status_text}</span>
                         </div>
                     </div>
+                    <div class="metric-card-desc">Number of localized surface regions flagged by the vision model.</div>
                 </div>
-                <div class="metric-card-desc">Number of localized surface regions flagged by the vision model.</div>
-            </div>
 
-            <!-- Box 5: Inspection Time -->
-            <div class="metric-card-box">
-                <div class="metric-card-header">
+                <!-- Row 2, Col 2: Box 5: Inspection Time -->
+                <div class="metric-card-box" style="margin-bottom: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
-                        <span class="metric-card-title">Inspection Time : <span class="metric-card-num">{time_seconds:.2f} seconds</span></span>
-                        <span style="display: inline-block; margin-left: 10px; padding: 2px 8px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; background: var(--surface-subtle); color: var(--text-secondary); border: 1px solid var(--border);">{int(latency_ms)} ms</span>
-                    </div>
-                    <div class="info-tooltip-wrapper">
-                        <span class="info-icon">i</span>
-                        <div class="info-tooltip-box">
-                            <strong style="color: #67E8F9;">Inspection Time Explained:</strong><br>
-                            • Real-world time taken to extract features, evaluate embeddings, and build heatmaps.<br>
-                            • Optimized for high-throughput automated inspection gates on the factory floor.<br>
-                            • Enables line speeds of tens to hundreds of parts per minute without bottlenecks.<br>
-                            • Includes end-to-end tensor transformations and dual-gated thresholding.
+                        <div class="metric-card-header">
+                            <div>
+                                <span class="metric-card-title">Inspection Time : <span class="metric-card-num">{time_seconds:.2f} s</span></span>
+                            </div>
+                            <div class="info-tooltip-wrapper">
+                                <span class="info-icon">i</span>
+                                <div class="info-tooltip-box">
+                                    <strong style="color: #67E8F9;">Inspection Time Explained:</strong><br>
+                                    • Real-world time taken to extract features, evaluate embeddings, and build heatmaps.<br>
+                                    • Optimized for high-throughput automated inspection gates on the factory floor.<br>
+                                    • Enables line speeds of tens to hundreds of parts per minute without bottlenecks.<br>
+                                    • Includes end-to-end tensor transformations and dual-gated thresholding.
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin: 4px 0 8px 0;">
+                            <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.80rem; font-weight: 700; background: var(--surface-subtle); color: var(--text-secondary); border: 1px solid var(--border);">{int(latency_ms)} ms</span>
                         </div>
                     </div>
+                    <div class="metric-card-desc">Total duration required by the vision model to analyze and evaluate this image.</div>
                 </div>
-                <div class="metric-card-desc">Total duration required by the vision model to analyze and evaluate this image.</div>
             </div>
         </div>
         """)
@@ -2711,28 +2794,28 @@ elif st.session_state["nav_page"] == "Inspect":
             user_where_text = f"No unusual visual regions were detected. The {active_cat.lower()} surface conforms to nominal baseline appearance."
 
         render_html(f"""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div style="font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 26px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size: 1.30rem; font-weight: 800; letter-spacing: 0.04em; color: var(--text-primary); text-transform: uppercase; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
                 5. WHY DID VISIONINSPECT GIVE THIS RESULT?
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
                 <!-- 5.1 WHAT DID VISIONINSPECT FIND? -->
-                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
-                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px;">
+                    <div style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
                         5.1 WHAT DID VISIONINSPECT FIND?
                     </div>
-                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.5; font-weight: 500;">
+                    <div style="font-size: 1.02rem; color: var(--text-primary); line-height: 1.55; font-weight: 500;">
                         {defect_desc}
                     </div>
                 </div>
 
                 <!-- 5.2 WHERE WAS THE ANOMALY DETECTED? -->
-                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
-                    <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 5px;">
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px;">
+                    <div style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
                         5.2 WHERE WAS THE ANOMALY DETECTED?
                     </div>
-                    <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.5;">
+                    <div style="font-size: 1.02rem; color: var(--text-primary); line-height: 1.55;">
                         {user_where_text}
                     </div>
                 </div>
@@ -2740,35 +2823,42 @@ elif st.session_state["nav_page"] == "Inspect":
         </div>
         """)
 
-        # 6. ANOMALY DETECTION REGION (SEPARATE DISTINCT CARD WITHOUT RAW COORDINATES)
+        # 6. ANOMALY DETECTION REGION (DYNAMIC GREEN/RED STATUS CARD WITH RESTRAINED LEFT BORDER)
         if not is_defective or n_defects == 0:
             render_html(f"""
-            <div style="background: var(--surface); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                    <span style="color: var(--success); font-weight: 800; font-size: 1.0rem;">✓</span>
-                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--success); letter-spacing: 0.04em;">6. NO ANOMALY REGION DETECTED</span>
+            <div style="background: var(--success-bg); border: 1px solid rgba(34, 197, 94, 0.35); border-left: 5px solid #22C55E; border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="color: var(--success); font-weight: 800; font-size: 1.2rem;">✓</span>
+                        <span style="font-size: 1.15rem; font-weight: 700; color: var(--success); letter-spacing: 0.02em;">6. NO ANOMALY REGION DETECTED</span>
+                    </div>
+                    <span style="font-size: 0.80rem; font-weight: 700; color: var(--success); background: var(--surface); border: 1px solid rgba(34, 197, 94, 0.4); padding: 3px 10px; border-radius: 4px;">0 REGIONS</span>
                 </div>
-                <div style="font-size: 0.80rem; color: var(--text-secondary); line-height: 1.45;">
-                    No localized visual anomaly regions were detected. The {active_cat.lower()} surface is uniform and conforms to learned nominal patterns.
+                <div style="font-size: 1.02rem; color: var(--text-primary); line-height: 1.5; font-weight: 500; margin-bottom: 4px;">
+                    No localized anomaly regions were detected by the model.
+                </div>
+                <div style="font-size: 0.90rem; color: var(--text-secondary); line-height: 1.45;">
+                    The {active_cat.lower()} surface is uniform and conforms to learned nominal patterns without localized defects.
                 </div>
             </div>
             """)
         else:
             cat_name = active_cat.lower()
+            reg_header = "6. ANOMALY REGIONS DETECTED" if n_defects > 1 else "6. ANOMALY REGION DETECTED"
             render_html(f"""
-            <div style="background: var(--surface); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="color: var(--danger); font-weight: 800; font-size: 1.0rem;">!</span>
-                        <span style="font-size: 0.82rem; font-weight: 700; color: var(--danger); letter-spacing: 0.04em;">6. ANOMALY REGION DETECTED</span>
+            <div style="background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.35); border-left: 5px solid #EF4444; border-radius: 8px; padding: 18px 22px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="color: var(--danger); font-weight: 800; font-size: 1.2rem;">!</span>
+                        <span style="font-size: 1.15rem; font-weight: 700; color: var(--danger); letter-spacing: 0.02em;">{reg_header}</span>
                     </div>
-                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--danger); background: var(--danger-bg); border: 1px solid #FECACA; padding: 2px 8px; border-radius: 4px;">{n_defects} ANOMALY REGION{'S' if n_defects > 1 else ''} DETECTED</span>
+                    <span style="font-size: 0.80rem; font-weight: 700; color: var(--danger); background: var(--surface); border: 1px solid rgba(239, 68, 68, 0.4); padding: 3px 10px; border-radius: 4px;">{n_defects} ANOMALY REGION{'S' if n_defects > 1 else ''} DETECTED</span>
                 </div>
-                <div style="font-size: 0.84rem; color: var(--text-primary); line-height: 1.5; margin-bottom: 4px; font-weight: 500;">
-                    An unusual visual area was detected on the {cat_name} surface.
+                <div style="font-size: 1.02rem; color: var(--text-primary); line-height: 1.5; font-weight: 500; margin-bottom: 4px;">
+                    One or more localized regions exceeded the configured anomaly criteria.
                 </div>
-                <div style="font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45;">
-                    The highlighted area in the image above shows where VisionInspect detected the visual difference. For exact pixel coordinates, bounding boxes, and dimensions, refer to the Technical Report below.
+                <div style="font-size: 0.90rem; color: var(--text-secondary); line-height: 1.45;">
+                    The highlighted area in the image above shows where VisionInspect detected the visual difference on the {cat_name} surface. For exact pixel coordinates, bounding boxes, and dimensions, refer to the Technical Report below.
                 </div>
             </div>
             """)
@@ -2783,40 +2873,40 @@ elif st.session_state["nav_page"] == "Inspect":
         disclaimer_text = usab.get("disclaimer", "VisionInspect provides optical anomaly screening. Final safety and structural certification requires physical inspection according to applicable industry standards.")
 
         render_html(f"""
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                <span style="font-size: 0.76rem; font-weight: 800; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 26px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 1.30rem; font-weight: 800; letter-spacing: 0.04em; color: var(--text-primary); text-transform: uppercase;">
                     7. PRODUCT USABILITY / INSPECTION DISPOSITION
                 </span>
-                <span style="display:inline-block; padding: 4px 12px; border-radius: 4px; background: {usab.get('badge_bg', 'var(--surface-subtle)')}; color: {usab.get('badge_color', 'var(--text-primary)')}; font-weight: 700; font-size: 0.74rem; border: 1px solid {usab.get('badge_border', 'var(--border)')}; letter-spacing: 0.04em;">
+                <span style="display:inline-block; padding: 5px 14px; border-radius: 4px; background: {usab.get('badge_bg', 'var(--surface-subtle)')}; color: {usab.get('badge_color', 'var(--text-primary)')}; font-weight: 700; font-size: 0.85rem; border: 1px solid {usab.get('badge_border', 'var(--border)')}; letter-spacing: 0.04em;">
                     {disp_title}
                 </span>
             </div>
 
-            <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 14px; font-weight: 500;">
+            <div style="font-size: 1.02rem; color: var(--text-primary); line-height: 1.55; margin-bottom: 16px; font-weight: 500;">
                 {usab.get("reason", "")}
             </div>
 
             <!-- 8. QUALITY STATUS / USABILITY DISPOSITION / RECOMMENDED ACTION -->
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+            <div style="font-size: 1.10rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">
                 8. QUALITY STATUS & RECOMMENDED ACTIONS
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px;">
-                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Quality Status</div>
-                    <div style="font-size: 0.86rem; font-weight: 700; color: {q_status_color}; margin-top: 2px;">{q_status}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px;">
+                    <div style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Quality Status</div>
+                    <div style="font-size: 1.10rem; font-weight: 700; color: {q_status_color}; margin-top: 4px;">{q_status}</div>
                 </div>
-                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Usability Disposition</div>
-                    <div style="font-size: 0.86rem; font-weight: 700; color: {usab.get('badge_color', 'var(--text-primary)')}; margin-top: 2px;">{u_disp}</div>
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px;">
+                    <div style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Usability Disposition</div>
+                    <div style="font-size: 1.10rem; font-weight: 700; color: {usab.get('badge_color', 'var(--text-primary)')}; margin-top: 4px;">{u_disp}</div>
                 </div>
-                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px;">
-                    <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Recommended Action</div>
-                    <div style="font-size: 0.84rem; font-weight: 600; color: var(--text-primary); margin-top: 2px;">{r_action}</div>
+                <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px;">
+                    <div style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Recommended Action</div>
+                    <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-top: 4px;">{r_action}</div>
                 </div>
             </div>
 
-            <div style="font-size: 0.70rem; color: var(--text-muted); line-height: 1.45; border-top: 1px solid var(--border); padding-top: 10px;">
+            <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; border-top: 1px solid var(--border); padding-top: 12px;">
                 <strong>Regulatory Notice:</strong> {disclaimer_text}
             </div>
         </div>
@@ -2826,18 +2916,18 @@ elif st.session_state["nav_page"] == "Inspect":
         m_col1, m_col2 = st.columns([3.2, 1.2], gap="small")
         with m_col1:
             render_html(f"""
-            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; margin-bottom: 14px;">
-                <div style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">9. MODEL USED</div>
-                <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;">
-                    PatchCore v2.3 <span style="font-size: 0.80rem; font-weight: 500; color: var(--text-secondary);">• {active_cat.title()} Model</span>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+                <div style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase;">9. MODEL USED</div>
+                <div style="font-size: 1.20rem; font-weight: 700; color: var(--text-primary); margin-top: 4px;">
+                    PatchCore v2.3 <span style="font-size: 0.95rem; font-weight: 500; color: var(--text-secondary);">• {active_cat.title()} Model</span>
                 </div>
-                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                <div style="font-size: 0.90rem; color: var(--text-muted); margin-top: 4px;">
                     Unsupervised Density-based Anomaly Localization with Greedy Coreset Subsampling
                 </div>
             </div>
             """)
         with m_col2:
-            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
             if st.button(f"View {active_cat.title()} Docs →", key="res_view_model_doc_btn", type="secondary", use_container_width=True):
                 st.session_state["selected_model_doc"] = active_cat
                 st.session_state["nav_page"] = "Models"
@@ -2876,8 +2966,8 @@ elif st.session_state["nav_page"] == "Inspect":
 
         with st.expander("10. Technical Inspection Report — Engineering & QA", expanded=False):
             render_html(f"""
-            <div style="margin-bottom: 16px;">
-                <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">
                     1. REJECTION AREA ANALYSIS (LOCALIZED DEFECT REGIONS)
                 </div>
                 <table class="tech-table">
@@ -2898,29 +2988,29 @@ elif st.session_state["nav_page"] == "Inspect":
             </div>
 
             <!-- Pipeline Architecture Flow Diagram -->
-            <div style="margin-bottom: 16px;">
-                <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+            <div style="margin-bottom: 20px;">
+                <div style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">
                     2. PIPELINE ARCHITECTURE FLOW
                 </div>
-                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 12px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; font-size: 0.72rem;">
-                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Input Image (224×224)</span>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem;">
+                    <span style="padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Input Image (224×224)</span>
                     <span style="color: var(--text-muted); font-weight: 700;">→</span>
-                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">ResNet-18 Feature Extraction</span>
+                    <span style="padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">ResNet-18 Feature Extraction</span>
                     <span style="color: var(--text-muted); font-weight: 700;">→</span>
-                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Patch Neighborhood Pooling</span>
+                    <span style="padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Patch Neighborhood Pooling</span>
                     <span style="color: var(--text-muted); font-weight: 700;">→</span>
-                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Memory Bank Coreset Search</span>
+                    <span style="padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Memory Bank Coreset Search</span>
                     <span style="color: var(--text-muted); font-weight: 700;">→</span>
-                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Anomaly Heatmap</span>
+                    <span style="padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Anomaly Heatmap</span>
                     <span style="color: var(--text-muted); font-weight: 700;">→</span>
-                    <span style="padding: 4px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Dual-Gated Thresholding</span>
+                    <span style="padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;">Dual-Gated Thresholding</span>
                     <span style="color: var(--text-muted); font-weight: 700;">→</span>
-                    <span style="padding: 4px 8px; background: var(--surface); border: 1.5px solid var(--text-primary); border-radius: 4px; font-weight: 700;">Final Verdict</span>
+                    <span style="padding: 5px 10px; background: var(--surface); border: 1.5px solid var(--text-primary); border-radius: 4px; font-weight: 700;">Final Verdict</span>
                 </div>
             </div>
 
             <div>
-                <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">
+                <div style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px;">
                     3. MODEL ARCHITECTURE & CALIBRATION PARAMETERS
                 </div>
                 <table class="tech-table">
@@ -2977,13 +3067,13 @@ elif st.session_state["nav_page"] == "Inspect":
                         </tr>
                         <tr>
                             <td style="font-weight: 600; color: var(--text-secondary);">Request Trace ID</td>
-                            <td style="font-family: monospace; font-size: 0.72rem;">{res.get('request_id', 'N/A')}</td>
+                            <td style="font-family: monospace; font-size: 0.85rem;">{res.get('request_id', 'N/A')}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; margin-top: 14px; font-size: 0.76rem; color: var(--text-secondary); line-height: 1.45;">
+            <div style="background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin-top: 16px; font-size: 0.90rem; color: var(--text-secondary); line-height: 1.5;">
                 <strong style="color: var(--text-primary);">Technician Action & Diagnostic Guide:</strong><br>
                 • If recurring false positives are observed on nominal components, verify camera lens cleanliness and fixture alignment before increasing $T_{{image}}$.<br>
                 • If subtle real-world defects are under-segmented, decrease connected-component filtering or inspect lighting diffusion.<br>
@@ -2993,20 +3083,20 @@ elif st.session_state["nav_page"] == "Inspect":
 
         # 11. RECENT INSPECTIONS (SESSION)
         if st.session_state.get("recent_inspections"):
-            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-            render_html("<div style='font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>11. RECENT INSPECTIONS (SESSION)</div>")
+            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+            render_html("<div style='font-size: 1.05rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;'>11. RECENT INSPECTIONS (SESSION)</div>")
             hist_rows = []
             for item in st.session_state["recent_inspections"][:4]:
                 badge_color = "var(--danger)" if item["status"] == "DEFECTIVE" else "var(--success)"
                 hist_rows.append(
-                    f"<div style='display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.80rem;'>"
-                    f"<span><span style='font-weight:600; color:var(--text-primary);'>#{item['id']}</span> &nbsp; {item['category'].title()} &nbsp;•&nbsp; <code style='font-size:0.75rem; color:var(--text-secondary);'>{item['filename'][:20]}</code></span>"
+                    f"<div style='display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.90rem;'>"
+                    f"<span><span style='font-weight:600; color:var(--text-primary);'>#{item['id']}</span> &nbsp; {item['category'].title()} &nbsp;•&nbsp; <code style='font-size:0.85rem; color:var(--text-secondary);'>{item['filename'][:20]}</code></span>"
                     f"<span style='color:{badge_color}; font-weight:700;'>{item['status']}</span>"
                     f"<span style='color:var(--text-secondary);'>Score: {item['score']:.4f}</span>"
                     f"<span style='color:var(--text-muted);'>Latency: {item['time_s']:.2f}s</span>"
                     f"</div>"
                 )
-            render_html(f"<div style='background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 16px;'>{''.join(hist_rows)}</div>")
+            render_html(f"<div style='background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px 18px;'>{''.join(hist_rows)}</div>")
 
         # 12. DOWNLOAD REPORT AS PDF & INSPECT ANOTHER
         st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
@@ -3278,10 +3368,14 @@ elif st.session_state["nav_page"] == "Inspect":
                         render_html(f"""
                         <style>
                             div.st-key-right_col_cat_{c_key} button {{
-                                border: 1.5px solid var(--text-primary) !important;
+                                border: 2px solid var(--btn-primary-bg) !important;
                                 background-color: var(--surface-subtle) !important;
                                 color: var(--text-primary) !important;
-                                font-weight: 600 !important;
+                                font-weight: 700 !important;
+                            }}
+                            div.st-key-right_col_cat_{c_key} button * {{
+                                color: var(--text-primary) !important;
+                                font-weight: 700 !important;
                             }}
                         </style>
                         """)
