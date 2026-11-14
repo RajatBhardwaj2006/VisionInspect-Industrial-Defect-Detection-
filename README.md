@@ -1,143 +1,227 @@
 # VisionInspect — Industrial Defect Detection & Localization
-  
+
 [![Maintainer](https://img.shields.io/badge/Maintainer-RajatBhardwaj2006-blue.svg)](https://github.com/RajatBhardwaj2006)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-VisionInspect-green.svg)](https://github.com/RajatBhardwaj2006/VisionInspect-Industrial-Defect-Detection-.git)
+[![Live Demo](https://img.shields.io/badge/Streamlit%20Cloud-Live%20App-FF4B4B.svg)](https://visioninspect.streamlit.app)
 [![Python](https://img.shields.io/badge/Python-3.12%20(64--bit)-brightgreen.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2%2B-red.svg)](https://pytorch.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-teal.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.32%2B-orange.svg)](https://streamlit.io/)
-[![Tests](https://img.shields.io/badge/Tests-109%2F109%20Passing-success.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-121%2F121%20Passing-success.svg)](tests/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Git LFS](https://img.shields.io/badge/Git%20LFS-Enabled-blue.svg)](https://git-lfs.github.com/)
 
-An unsupervised visual anomaly detection and sub-pixel defect localization framework engineered for high-precision manufacturing quality assurance. VisionInspect uses multi-scale deep patch embeddings, greedy coreset memory banks, adaptive spatial background priors, and connected-component morphology to detect, score, and localize subtle anomalies on physical components without requiring labeled defect data for training.
+> **Live Deployment:** [https://visioninspect.streamlit.app](https://visioninspect.streamlit.app)
+
+VisionInspect is an unsupervised computer vision framework for industrial quality assurance and sub-pixel defect localization. Engineered for physical assembly lines and automated inspection gates, VisionInspect detects structural, surface, and cosmetic departures from nominal factory baselines **without requiring defective samples for training**.
 
 ---
 
-# Quick Start (Teammate Setup)
+## 1. Project Introduction
 
-For a developer setting up VisionInspect on a fresh machine from scratch:
+In modern manufacturing, defective components are rare, unpredictable, and varied. Traditional supervised deep learning models require thousands of curated defect images with ground-truth segmentation masks for every defect mode (scratches, cracks, cuts, missing parts, deformities). This is fundamentally impractical and cost-prohibitive in high-mix, low-volume production lines.
 
-```powershell
-# 1. Clone repository with Git LFS
-git clone https://github.com/RajatBhardwaj2006/VisionInspect-Industrial-Defect-Detection-.git
-cd VisionInspect-Industrial-Defect-Detection-
-git lfs pull
+**VisionInspect solves this through unsupervised nominal representation modeling:**
+- **Zero Defect Training:** Models are trained exclusively on nominal (defect-free) components to learn the natural manifold of standard parts.
+- **Deep PatchCore v2.3 Engine:** Deep visual feature representations are extracted across multiple hierarchical layers of a pre-trained ResNet-18 backbone and searched against a minimax greedy coreset memory bank.
+- **Explainable Anomaly Localization:** Out-of-distribution visual departures are scored continuously, refined with category-specific spatial background priors, and segmented into bounding boxes and surface area metrics.
+- **Dual-Gated Quality Gate:** Anomaly decisions require both the continuous image score to exceed a statistically calibrated threshold ($T_{\text{image}}$) and connected anomaly regions to meet minimal geometric criteria ($A \ge \text{min\_area}$), eliminating single-pixel sensor noise.
 
-# 2. Set up Python 3.12 virtual environment
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+---
 
-# 3. Install core dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+## 2. Key Features
 
-# 4. Verify production models
-python scripts/verify_models.py
+- **Unsupervised Anomaly Detection:** Learns nominal appearance from defect-free parts; flags unseen defect modes automatically.
+- **Sub-Pixel Defect Localization:** High-resolution anomaly heatmaps and bounding boxes isolate defects on the physical component surface.
+- **Dual Inference Architecture:**
+  - **In-Process Engine (Streamlit Community Cloud):** Zero-overhead direct inference with lazy single-model memory purging for $0 cloud hosting within a 1 GB RAM footprint.
+  - **REST API Backend (Local / Enterprise):** Decoupled high-throughput FastAPI service (`/predict`, `/predict/batch`, `/health`, `/categories`).
+- **Explainable Quality Verdicts:** Three-tier plain-English explanations for shop-floor operators alongside full technical matrices for QA engineers.
+- **Automated Inspection Reports:** Instant, production-grade PDF certification reports with embedded heatmap overlays, bounding-box geometry, and regulatory disclaimers.
+- **Cross-Category Safety Guard:** Pre-inference centroid distance screening prevents cross-product false rejections (e.g., inspecting a screw under a bottle model).
+- **Standalone Verification Suite:** 21 curated test samples and 121 automated regression tests run completely offline without downloading the 5 GB MVTec dataset.
 
-# 5. Start backend in terminal 1
-$env:KMP_DUPLICATE_LIB_OK="TRUE"
-python -m uvicorn app.backend:app --host 127.0.0.1 --port 8000
+---
 
-# 6. Start frontend in terminal 2
-.\.venv\Scripts\Activate.ps1
-python -m streamlit run app/app.py --server.port 8501
+## 3. Supported Production Categories
+
+VisionInspect is calibrated across **five industrial manufacturing categories** from the MVTec Anomaly Detection benchmark:
+
+| Category | Component Class | Physical Defect Modes Detected | Spatial Prior | Score Aggregation | Image Threshold ($T_{\text{image}}$) |
+| :--- | :--- | :--- | :---: | :--- | :---: |
+| **Bottle** | Rigid Glass Container | Mouth cracks, glass fractures, contamination | Yes ($p75$ baseline) | Max Raw Patch | `1.5000` |
+| **Leather** | Flexible Natural Texture | Cuts, fold creases, dye flaws, glue, punctures | No (Uniform texture) | Max Raw Patch | `2.9000` |
+| **Transistor** | Semiconductor Package | Bent leads, cut pins, damaged housing, missing body | No (Lead-frame) | Top-200 Average | `3.5250` |
+| **Zipper** | Mechanical Fastener | Broken teeth, split tracks, fabric edge fraying | Yes (Weave prior) | Max Raw Patch | `1.4700` |
+| **Screw** | Threaded Metal Hardware | Thread damage, head scratches, neck stripping | No (Rotational) | Top-100 Average | `2.8000` |
+
+---
+
+## 4. System Architecture
+
+The end-to-end inspection pipeline flows from image acquisition to quality disposition:
+
 ```
-
-Or on Windows PowerShell, run the automated launcher:
-```powershell
-.\scripts\setup_windows.ps1
-.\scripts\start_visioninspect.ps1
-```
-
-Open **http://localhost:8501** in your browser. Select any category, pick a sample from the catalog, and click **Start Inspection**.
-
----
-
-## What is VisionInspect?
-
-In industrial manufacturing, defective units are scarce, irregular, and unpredictable. Training supervised deep learning models requires thousands of labeled defect images with ground-truth pixel annotations, which is impractical for real-world production.
-
-VisionInspect solves this through **unsupervised nominal representation modeling**:
-- **Training on Normal Units Only:** Models the distribution of normal patch features extracted from intermediate convolutional layers of a pre-trained feature extractor (ResNet-18).
-- **PatchCore v2.3 Distance Engine:** Quantifies how far test patches deviate from the learned normal memory bank.
-- **Sub-Pixel Defect Localization:** Combines continuous image-level anomaly scoring with spatial priors and morphological connected-component filtering to output precise defect bounding boxes.
-- **Enterprise Reporting:** Produces human-friendly plain-English verdicts for operators, comprehensive engineering metrics for QA, and downloadable PDF inspection certificates.
-
----
-
-## Supported Categories
-
-VisionInspect is calibrated across five production manufacturing categories from the MVTec AD benchmark:
-
-| Category | Component Type | Defect Modes Handled | Spatial Prior | Scoring Method |
-| :--- | :--- | :--- | :---: | :--- |
-| **Bottle** | Rigid Glass Container | Rim cracks, small fractures, contamination | Yes ($p75$ Prior) | Max Patch |
-| **Leather** | Surface Texture | Cuts, fold marks, color flaws, glue, punctures | No (Texture) | Calibrated Margin |
-| **Transistor** | Semiconductor IC | Bent leads, cut pins, damaged casing, missing body | No (Alignment) | Top-200 Average |
-| **Zipper** | Mechanical Fastener | Broken teeth, split gaps, fabric edge roughness | Yes (Weave Prior) | Calibrated Margin |
-| **Screw** | Threaded Metal Fastener | Thread deformation, head scratch, neck flaws | No (Rotational) | Top-100 Average |
-
----
-
-## System Architecture
-
-```mermaid
-flowchart TD
-    subgraph Client ["Client & Web Application"]
-        Operator["Operator / Inspector"]
-        UI["Streamlit Frontend (app/app.py :8501)"]
-        PDF["ReportLab PDF Generator"]
-    end
-
-    subgraph Service ["Backend REST API (FastAPI :8000)"]
-        API["FastAPI Engine (app/backend.py)"]
-        Checker["Category Compatibility Checker (<50ms)"]
-        Router["Model Dispatcher & Cache"]
-    end
-
-    subgraph Detection ["PatchCore v2.3 Engine"]
-        Extractor["ResNet-18 Multi-Layer Backbone (448D)"]
-        MemoryBank["Greedy Coreset Memory Bank (10%)"]
-        Prior["Empirical Spatial Prior (Normal Background)"]
-        Morphology["Morphological Kernel & CC Labeling"]
-    end
-
-    Operator --> UI
-    UI --> API
-    API --> Checker
-    Checker -->|Mismatch Alert| UI
-    Checker -->|Compatible| Router
-    Router --> Detection
-    Extractor --> MemoryBank
-    MemoryBank --> Prior
-    Prior --> Morphology
-    Morphology --> UI
-    UI --> PDF
+[Input Image (224×224 RGB)]
+            ↓
+[Category Centroid Screening] ──(Mismatch Alert)──> [UI Warning Dialog]
+            ↓ (Pass)
+[ResNet-18 Multi-Scale Feature Extractor (Layers 1, 2, 3)]
+            ↓
+[448-Dimensional Local Patch Neighborhood Embeddings]
+            ↓
+[Greedy Coreset Memory Bank Search (10% Subsampling)]
+            ↓
+[Anomaly Heatmap Generation & Spatial Prior Normalization]
+            ↓
+[Connected-Component Morphology & Bounding Box Extraction]
+            ↓
+[Dual-Gated Inspection Verdict (Score + Region Area)]
+            ↓
+┌────────────────────────────────────────────────────────┐
+│                   Inspection Outputs                   │
+├───────────────────────────┬────────────────────────────┤
+│ • Interactive Streamlit UI│ • QA Technical Details     │
+│ • Plain-English Explanations│ • Downloadable PDF Report │
+└───────────────────────────┴────────────────────────────┘
 ```
 
 ---
 
-## Prerequisites
+## 5. Technology Stack
 
-- **OS:** Windows 10/11, macOS, or Linux (Ubuntu 20.04+)
-- **Python:** **Python 3.12 (64-bit)** recommended.
-- **Git:** Git 2.30+
-- **Git LFS:** Git Large File Storage ([https://git-lfs.github.com/](https://git-lfs.github.com/)) installed to pull model weights.
-- **RAM:** Minimum 4 GB RAM (8 GB recommended for CPU inference; CUDA GPU optional).
+- **Deep Learning Framework:** PyTorch `2.2.2+cpu`, Torchvision `0.17.2+cpu`
+- **Feature Backbone:** ResNet-18 (ImageNet pre-trained feature pyramid pooling)
+- **Computer Vision & Array Math:** OpenCV (`opencv-python 4.8+`), NumPy `1.26.4`, SciPy `1.12.0`, scikit-learn `1.4.2`
+- **Web Application & UI:** Streamlit `1.32.0+` (custom dark/light high-contrast theme system)
+- **Backend API:** FastAPI `0.110.0+`, Uvicorn `0.28.0+`, Pydantic
+- **PDF Generation:** ReportLab `4.0.0+`
+- **Configuration & Utilities:** PyYAML `6.0.3`, Pandas `2.2.0`, Pillow `10.2.0+`
+- **Testing:** Pytest `8.0.0+` (121 automated tests)
+- **Deployment Platform:** Streamlit Community Cloud (Linux, Python 3.12, system `packages.txt`)
 
 ---
 
-## Installation & Setup
+## 6. Repository Structure
 
-### 1. Clone the Repository
+```text
+VisionInspect/
+├── .devcontainer/                     # VS Code Dev Container configuration
+├── .dockerignore                      # Docker build exclusions
+├── .env.example                       # Environment variable template
+├── .gitattributes                     # Git LFS pointer rules for weights
+├── .gitignore                         # Exclusions for datasets, cache, secrets
+├── .python-version                    # Python 3.12 runtime pin for Streamlit Cloud
+├── .streamlit/                        # Streamlit theme & server configuration
+│   └── config.toml
+├── Dockerfile                         # Production multi-stage Docker container build
+├── LICENSE                            # MIT License
+├── README.md                          # Comprehensive project documentation
+├── config.yaml                        # Master thresholds, priors & morphology configs
+├── inference.py                       # CLI inference entry point
+├── packages.txt                       # Linux OS dependencies for OpenCV on cloud
+├── render.yaml                        # Render cloud deployment blueprint
+├── requirements.txt                   # Primary pinned dependencies
+├── requirements-lock.txt              # Frozen Python 3.12 environment snapshot
+├── run_manual_inference.ps1           # Portable PowerShell test runner
+│
+├── app/                               # Application Layer
+│   ├── app.py                         # Streamlit frontend & in-process PatchCore engine
+│   ├── backend.py                     # FastAPI REST server (/health, /predict)
+│   ├── components/                    # UI modular components
+│   │   ├── footer.py                  # Responsive footer
+│   │   └── model_docs.py              # Technical documentation viewer
+│   ├── utils/                         # Application utilities
+│   │   └── pdf_report.py              # Automated ReportLab PDF generator
+│   └── assets/icons/                  # Brand 3D logos and favicons
+│
+├── assets/                            # Static Visual Assets
+│   ├── carton_perfect.png             # Landing page illustrative nominal sample
+│   ├── carton_damaged.png             # Landing page illustrative defect sample
+│   └── test_samples/                  # 21 curated offline test samples
+│       ├── bottle/                    # (broken_large, broken_small, contamination, good)
+│       ├── leather/                   # (cut, fold, color, good)
+│       ├── screw/                     # (thread_side, scratch_head, manipulated, good)
+│       ├── transistor/                # (bent_lead, cut_lead, damaged_case, good)
+│       └── zipper/                    # (broken_teeth, rough, split_teeth, good)
+│
+├── Docs/                              # Technical Engineering Documentation
+│   ├── REPOSITORY_CLEANUP_AUDIT.md    # Pre-submission cleanup audit and inventory
+│   ├── SECURITY_AUDIT.md              # Production security audit (OWASP, paths, MIME)
+│   ├── DEPLOYMENT.md                  # Cloud & local deployment guide
+│   ├── DATASET_SETUP.md               # Guide to MVTec AD dataset setup
+│   └── category_compatibility.md      # Category mismatch defense specification
+│
+├── models/                            # Production Model Checkpoints
+│   ├── category_prototypes.pt         # 5-category centroid embeddings (11 KB)
+│   ├── bottle/patchcore_v23/          # Memory bank, spatial prior, metadata
+│   ├── leather/patchcore_v23/         # Memory bank, spatial prior, metadata
+│   ├── transistor/patchcore_v23/      # Memory bank, spatial prior, metadata
+│   ├── zipper/patchcore_v23/          # Memory bank, spatial prior, metadata
+│   ├── screw/patchcore_v23/           # Memory bank, spatial prior, metadata
+│   └── baseline/bottle/               # Phase 1 autoencoder baseline config
+│
+├── notebooks/                         # Exploratory Data Analysis & Research
+│   ├── 01_dataset_exploration.ipynb   # Initial dataset distributions
+│   ├── 03_autoencoder_training.ipynb  # Baseline autoencoder experimentation
+│   └── 04_anomaly_detection.ipynb     # PatchCore density estimation research
+│
+├── results/                           # Verified Experimental & Evaluation Results
+│   ├── evaluation/                    # Per-category evaluation JSONs
+│   ├── phase1_final/                  # Phase 1 benchmark comparisons
+│   ├── phase2/                        # Phase 2 crack localization comparisons
+│   ├── phase3/                        # Phase 3 multi-category evaluation metrics
+│   └── Updated_model_predictions/     # Locked per-sample audit report & summary
+│
+├── scripts/                           # Engineering Utilities & Automation
+│   ├── verify_models.py               # Model integrity and Git LFS validator
+│   ├── setup_windows.ps1              # Automated Windows environment installer
+│   ├── start_visioninspect.ps1        # Automated backend + frontend launcher
+│   ├── evaluate_model.py              # CLI batch evaluation script
+│   └── train_patchcore.py             # PatchCore memory bank training script
+│
+├── src/                               # Core Computer Vision Framework
+│   ├── data/                          # Dataset loaders & preprocessing transforms
+│   ├── detection/                     # PatchCore v2.3 detector, scoring, morphology
+│   ├── models/                        # Feature extractors (ResNet-18 pyramid pooling)
+│   ├── evaluation/                    # AUROC, ROC curves, pixel sweeps, visualizations
+│   └── utils/                         # Config loaders and path helpers
+│
+└── tests/                             # Automated Test Suite (121 Passed)
+    ├── test_app.py                    # App entry point contract
+    ├── test_category_mismatch.py      # Cross-category mismatch defense tests
+    ├── test_dataset.py                # Dataset loaders and sample resolution
+    ├── test_detection.py              # Anomaly detection contracts
+    ├── test_footer.py                 # UI footer layout
+    ├── test_frontend_state.py         # Frontend state atomic contracts
+    ├── test_inspect_page.py           # Catalog integrity and golden samples
+    ├── test_model.py                  # Autoencoder architecture
+    ├── test_model_dispatch.py         # Version dispatching (v2.2 vs v2.3)
+    ├── test_model_docs.py             # Technical documentation assertions
+    ├── test_patchcore*.py             # PatchCore memory bank algorithms
+    ├── test_pdf_report.py             # PDF generation and table formatting
+    ├── test_phase3_*.py               # Phase 3 multi-category regression tests
+    └── test_security_hardening.py     # Path traversal, upload limits, sanitization
+```
+
+---
+
+## 7. Installation & Setup
+
+### Prerequisites
+- **Operating System:** Windows 10/11, macOS, or Linux (Ubuntu 20.04+)
+- **Python:** **Python 3.12 (64-bit)** (Python 3.12.10 recommended)
+- **Git & Git LFS:** Git 2.30+ with [Git LFS](https://git-lfs.github.com/) installed
+- **Hardware:** Minimum 4 GB RAM (CPU inference supported; CUDA GPU optional)
+
+### Step 1: Clone Repository & Pull Model Weights
 ```bash
 git clone https://github.com/RajatBhardwaj2006/VisionInspect-Industrial-Defect-Detection-.git
 cd VisionInspect-Industrial-Defect-Detection-
 git lfs pull
 ```
 
-### 2. Python Virtual Environment
-
+### Step 2: Create Virtual Environment
 **Windows (PowerShell):**
 ```powershell
 python -m venv .venv
@@ -150,209 +234,130 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### Step 3: Install Dependencies
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+> *Note for CPU-only PyTorch:* If installing manually on a minimal machine:
+> ```bash
+> pip install torch==2.2.2+cpu torchvision==0.17.2+cpu --index-url https://download.pytorch.org/whl/cpu
+> ```
 
-### 4. Verify Production Models
+### Step 4: Verify Model Checkpoints
 ```bash
 python scripts/verify_models.py
 ```
-This script checks that all 5 category memory banks and prototypes are downloaded and valid tensors. If unpulled Git LFS pointers are detected, it runs `git lfs pull` automatically.
+This script verifies that all 5 production PatchCore models and category prototypes exist, are valid PyTorch tensors, and are not unpulled Git LFS pointers.
 
 ---
 
-## Trained Models
+## 8. Local Execution
 
-VisionInspect ships with pre-trained PatchCore v2.3 models for all 5 categories.
-
-Directory structure:
-```text
-models/
-├── category_prototypes.pt                 # 11 KB (Standard Git)
-├── bottle/patchcore_v23/
-│   ├── memory_bank.pt                     # 146.30 MB (Git LFS)
-│   ├── spatial_prior.pt                   # 257.6 KB (Standard Git)
-│   ├── spatial_prior_p75.pt               # 257.2 KB (Standard Git)
-│   └── metadata.json                      # Locked thresholds
-├── leather/patchcore_v23/
-│   ├── memory_bank.pt                     # 171.50 MB (Git LFS)
-│   ├── spatial_prior.pt                   # 257.6 KB (Standard Git)
-│   └── metadata.json
-├── transistor/patchcore_v23/
-│   ├── memory_bank.pt                     # 149.10 MB (Git LFS)
-│   ├── spatial_prior.pt                   # 257.2 KB (Standard Git)
-│   └── metadata.json
-├── zipper/patchcore_v23/
-│   ├── memory_bank.pt                     # 168.00 MB (Git LFS)
-│   ├── spatial_prior.pt                   # 257.2 KB (Standard Git)
-│   └── metadata.json
-└── screw/patchcore_v23/
-    ├── memory_bank.pt                     # 224.00 MB (Git LFS)
-    ├── spatial_prior.pt                   # 257.6 KB (Standard Git)
-    └── metadata.json
+### Option A: Standalone In-Process Mode (Fastest & Simplest)
+Launch VisionInspect directly using the built-in in-process PatchCore engine:
+```bash
+python -m streamlit run app/app.py
 ```
+Open **[http://localhost:8501](http://localhost:8501)** in your browser.
 
-For more details on re-training or acquiring external datasets, see [`docs/DATASET_SETUP.md`](docs/DATASET_SETUP.md).
-
----
-
-## Environment Variables
-
-Copy the template to `.env` (optional; defaults work out of the box):
-```powershell
-Copy-Item .env.example .env
-```
-
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `VISIONINSPECT_BACKEND_URL` | `http://127.0.0.1:8000` | REST API target used by the Streamlit frontend |
-| `KMP_DUPLICATE_LIB_OK` | `TRUE` | Resolves OpenMP DLL conflicts on Windows Intel CPUs |
-
----
-
-## Running the Application
-
-### Option A: Two-Terminal Launch
-
-**Terminal 1 — Backend API:**
+### Option B: Decoupled REST Service (Production Simulation)
+**Terminal 1 — Start FastAPI Backend:**
 ```powershell
 $env:KMP_DUPLICATE_LIB_OK="TRUE"
 python -m uvicorn app.backend:app --host 127.0.0.1 --port 8000
 ```
+API Documentation will be live at: **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
 
-**Terminal 2 — Frontend UI:**
+**Terminal 2 — Start Streamlit Frontend:**
 ```powershell
 python -m streamlit run app/app.py --server.port 8501
 ```
 
-### Option B: Windows Automated Launcher
+### Option C: Windows Automated Script
 ```powershell
+.\scripts\setup_windows.ps1
 .\scripts\start_visioninspect.ps1
 ```
 
-Access the UI at: **[http://localhost:8501](http://localhost:8501)**  
-Access the API Docs at: **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
+---
+
+## 9. Model Architecture & Specifications
+
+| Parameter | Specification |
+| :--- | :--- |
+| **Model Type** | PatchCore v2.3 (Unsupervised Density-based Anomaly Localization) |
+| **Feature Extractor** | ResNet-18 (ImageNet pre-trained weights) |
+| **Pooled Layers** | Layer 1 (64D), Layer 2 (128D), Layer 3 (256D) |
+| **Patch Feature Dimension** | 448-dimensional dense representations |
+| **Spatial Grid** | $64 \times 64$ grid per image (4,096 patches) |
+| **Memory Bank Subsampling** | 10% minimax greedy coreset subsampling |
+| **Distance Metric** | Chunked Euclidean distance (memory-bounded matrix operations) |
+| **Decision Rule** | Dual-Gated: $[S_{\text{image}} > T_{\text{image}}] \land [\text{Area} \ge \text{min\_area}]$ |
 
 ---
 
-## Verifying the Installation
+## 10. Verified Benchmark Evaluation
 
-1. **Check Backend Health:**
-   ```powershell
-   Invoke-RestMethod -Uri http://127.0.0.1:8000/health
-   ```
-   Expected response:
-   ```json
-   {
-     "status": "ok",
-     "supported_categories": ["bottle", "leather", "transistor", "zipper", "screw"],
-     "device": "cpu",
-     "version": "3.2.0"
-   }
-   ```
+All models were evaluated on official held-out test splits from the MVTec AD benchmark, with calibration performed strictly on 20% validation nominal splits (zero test-set leakage):
 
-2. **Execute Sample Inspection via REST API:**
-   ```powershell
-   python inference.py --image assets/test_samples/bottle/broken_large_000.png --category bottle
-   ```
+| Category | Image-Level AUROC | Normal Specificity | Defect Sensitivity | False Positive Rate | Peak Memory Bank Size |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Bottle** | **100.0%** | 100.0% | 100.0% | 0.0% | 85,606 patches |
+| **Leather** | **100.0%** | 100.0% | 100.0% | 0.0% | 100,352 patches |
+| **Transistor** | **99.1%** | 97.5% | 98.4% | 2.5% | 87,244 patches |
+| **Zipper** | **99.8%** | 100.0% | 98.9% | 0.0% | 98,304 patches |
+| **Screw** | **99.4%** | 98.2% | 97.8% | 1.8% | 131,072 patches |
+| **Macro Average** | **99.66%** | **99.14%** | **99.02%** | **0.86%** | **100,516 patches** |
+
+*Detailed benchmark sweeps, ROC plots, and per-defect breakdowns are preserved in [`results/`](results/).*
 
 ---
 
-## Running the Automated Test Suite
+## 11. Deployment
 
-Run the full pytest suite (109 unit and integration tests):
+### Live Web Application
+- **URL:** [https://visioninspect.streamlit.app](https://visioninspect.streamlit.app)
+- **Host:** Streamlit Community Cloud (Zero-Cost Hosting Target)
+- **Engine Architecture:** Direct in-process PatchCore v2.3 inference engine.
+- **Memory Optimization:** Single-model lazy loading with automatic garbage collection and `torch.cuda.empty_cache()` equivalent tensor purging when switching categories, maintaining runtime memory comfortably below 700 MB.
+- **System Dependencies:** Managed via `packages.txt` (`libgl1`, `libglib2.0-0`) and `.python-version` (pinned to Python 3.12).
 
-```powershell
+---
+
+## 12. Automated Test Suite
+
+VisionInspect includes a rigorous test suite of **121 automated tests** covering machine learning inference, API contracts, PDF generation, security hardening, and UI state integrity.
+
+To execute the complete test suite:
+```bash
 python -m pytest tests/ -v
 ```
 
-All 109 tests run without requiring external datasets or network access.
-
----
-
-## Verified Benchmark Results
-
-Evaluation on held-out MVTec AD test sets (calibrated exclusively on nominal validation splits):
-
-| Category | AUROC (Image-Level) | Normal Specificity | Defect Sensitivity | False Positive Rate |
-| :--- | :---: | :---: | :---: | :---: |
-| **Bottle** | 100.0% | 100.0% | 100.0% | 0.0% |
-| **Leather** | 100.0% | 100.0% | 100.0% | 0.0% |
-| **Transistor** | 99.1% | 97.5% | 98.4% | 2.5% |
-| **Zipper** | 99.8% | 100.0% | 98.9% | 0.0% |
-| **Screw** | 99.4% | 98.2% | 97.8% | 1.8% |
-| **Macro Average** | **99.66%** | **99.14%** | **99.02%** | **0.86%** |
-
-*All calibration was performed strictly on 20% validation nominal splits without test set leakage.*
-
----
-
-## Project Structure
-
+Expected result:
 ```text
-VisionInspect/
-├── .gitattributes                     # Git LFS tracking rules for model tensors
-├── .gitignore                         # Strict exclusion for cache, datasets, secrets
-├── .env.example                       # Environment variable template
-├── config.yaml                        # Master calibrated category parameters
-├── CONTRIBUTING.md                    # Contributor guide and branch conventions
-├── LICENSE                            # MIT License
-├── README.md                          # Main project guide
-├── requirements.txt                   # Production dependencies
-├── requirements-lock.txt              # Exact frozen environment manifest
-├── inference.py                       # CLI inference interface
-│
-├── app/                               # Application Layer
-│   ├── app.py                         # Streamlit interactive UI
-│   ├── backend.py                     # FastAPI REST API server
-│   ├── components/                    # Model docs, footer, interactive UI
-│   ├── utils/                         # PDF report generation (ReportLab)
-│   └── assets/                        # 3D branding and application icons
-│
-├── assets/                            # Static Assets
-│   ├── test_samples/                  # 21 curated test samples (bottle, screw, etc.)
-│   └── models/                        # Component illustrations
-│
-├── docs/                              # Project Documentation
-│   ├── TEAM_HANDOFF_AUDIT.md          # Architecture & handoff audit
-│   ├── DATASET_SETUP.md               # External MVTec dataset setup
-│   ├── DEPLOYMENT.md                  # Production server deployment guide
-│   └── REPOSITORY_CLEANUP.md          # Maintenance & cleanup inventory
-│
-├── models/                            # Category PatchCore Models
-│   ├── category_prototypes.pt         # Feature centroids for mismatch check
-│   ├── bottle/patchcore_v23/          # Coreset memory banks & spatial priors
-│   ├── leather/patchcore_v23/
-│   ├── transistor/patchcore_v23/
-│   ├── zipper/patchcore_v23/
-│   └── screw/patchcore_v23/
-│
-├── scripts/                           # Tooling & Setup
-│   ├── setup_windows.ps1              # Windows automated setup
-│   ├── start_visioninspect.ps1        # Application launcher
-│   ├── verify_models.py               # Model integrity and LFS validator
-│   ├── train_patchcore.py             # Memory bank training script
-│   └── evaluate_model.py              # Performance evaluation script
-│
-├── src/                               # Core Machine Learning Framework
-│   ├── data/                          # Dataset loaders & preprocessing
-│   ├── detection/                     # PatchCore v2.3, heatmap, localization
-│   ├── models/                        # Multi-layer ResNet-18 & coreset logic
-│   └── utils/                         # Configuration and seed management
-│
-└── tests/                             # Comprehensive 109-Test Pytest Suite
-    ├── test_category_mismatch.py      # Component mismatch validation
-    ├── test_footer.py                 # Footer theme and reflection test
-    ├── test_model_docs.py             # Model documentation pages
-    ├── test_pdf_report.py             # ReportLab PDF compilation
-    └── test_phase3_*.py               # Integrity and localization suites
+================= 121 passed, 1 warning in ~115s =================
 ```
 
+### Test Scope
+- `test_inspect_page.py`: Golden sample integrity, category catalog verification (strictly 5 categories).
+- `test_patchcore_v23.py`: PatchCore v2.3 inference correctness and spatial priors.
+- `test_category_mismatch.py`: Centroid distance screening and cross-category alert dialogs.
+- `test_security_hardening.py`: Path traversal protection, Pillow decompression-bomb defense, upload MIME validation.
+- `test_pdf_report.py`: ReportLab automated table and PDF generation.
+- `test_frontend_state.py`: Atomic session state and decision margin calculations.
+
 ---
 
-## License
+## 13. System Limitations
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+- **Optical Anomaly Screening:** VisionInspect provides optical visual anomaly detection. It flags visual irregularities but does not replace physical structural, electrical, or tensile certification.
+- **Lighting & Fixture Alignment:** Unsupervised patch distance relies on consistent imaging conditions. Significant ambient illumination fluctuations or extreme orientation shifts can elevate patch distances.
+- **Model Scope:** Models are calibrated exclusively for the 5 documented industrial categories (Bottle, Leather, Transistor, Zipper, Screw). Inspecting arbitrary consumer objects outside this distribution will trigger category mismatch warnings.
+- **Memory-Constrained Single-Model Concurrency:** On resource-constrained free cloud tiers (e.g., 1 GB RAM), models are loaded lazily one category at a time to prevent out-of-memory container termination.
+
+---
+
+## 14. License
+
+This project is open-source software licensed under the **MIT License**. See the [LICENSE](LICENSE) file for complete terms and permissions.
