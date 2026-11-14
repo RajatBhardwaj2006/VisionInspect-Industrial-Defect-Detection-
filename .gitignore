@@ -29,6 +29,7 @@ __pycache__/
 !.env.example
 *.pem
 *.key
+.streamlit/secrets.toml
 
 # Logging, Temp Files & Archives
 *.log
